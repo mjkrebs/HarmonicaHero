@@ -494,14 +494,15 @@ let beatMs       = 0;
 let score = 0, combo = 0, totalNotes = 0, hitNotes = 0;
 let currentNote      = null;
 let lastDetectedKey  = '';
-let flashHoles       = new Map(); // hole → { alpha, color }
+let flashHoles       = new Map(); // hole → { alpha, color }  (correct hit — coloured glow)
+let wrongHoles       = new Map(); // hole → { alpha }          (wrong note — grey/red)
 let countdownVal     = 0;
 
 function buildNotes(song, bpm) {
   beatMs = 60000 / bpm;
   return song.notes.map(n => {
     const [noteName, noteOctave] = holeNote(n.hole, n.action);
-    return { ...n, noteName, noteOctave, hitTime: (n.beat + INTRO_BEATS) * beatMs, state: 'pending', wrongFlash: 0 };
+    return { ...n, noteName, noteOctave, hitTime: (n.beat + INTRO_BEATS) * beatMs, state: 'pending' };
   });
 }
 
@@ -532,6 +533,7 @@ function drawHarmonica(now) {
 
     // Flash state for this hole
     const flash = flashHoles.get(hole);
+    const wrong = wrongHoles.get(hole);
 
     // Shadow depth
     ctx.fillStyle = '#00000088';
@@ -540,14 +542,13 @@ function drawHarmonica(now) {
     ctx.fill();
 
     // Hole body
-    const isLit = flash && flash.alpha > 0;
-    ctx.fillStyle   = isLit ? color : color + '28';
-    ctx.strokeStyle = isLit ? color : color + '66';
-    ctx.lineWidth   = isLit ? 2.5 : 1.5;
-    if (isLit) {
-      ctx.shadowColor = color;
-      ctx.shadowBlur  = 14;
-    }
+    const isLit   = flash && flash.alpha > 0;
+    const isWrong = wrong && wrong.alpha > 0;
+    ctx.fillStyle   = isLit ? color : isWrong ? '#555566' : color + '28';
+    ctx.strokeStyle = isLit ? color : isWrong ? '#ef4444' : color + '66';
+    ctx.lineWidth   = isLit ? 2.5 : isWrong ? 2.0 : 1.5;
+    if (isLit)   { ctx.shadowColor = color;     ctx.shadowBlur = 14; }
+    if (isWrong) { ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10; }
     ctx.beginPath();
     ctx.roundRect(x, holeTop, hw, holeH, 5);
     ctx.fill();
@@ -555,7 +556,7 @@ function drawHarmonica(now) {
     ctx.shadowBlur = 0;
 
     // Hole number
-    ctx.fillStyle    = isLit ? '#ffffff' : '#ffffff55';
+    ctx.fillStyle    = isLit ? '#ffffff' : isWrong ? '#ff9999' : '#ffffff55';
     ctx.font         = `bold ${Math.round(LANE_W * 0.22)}px system-ui`;
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
@@ -566,6 +567,10 @@ function drawHarmonica(now) {
   for (const [hole, f] of flashHoles) {
     f.alpha -= 0.035;
     if (f.alpha <= 0) flashHoles.delete(hole);
+  }
+  for (const [hole, w] of wrongHoles) {
+    w.alpha -= 0.025;
+    if (w.alpha <= 0) wrongHoles.delete(hole);
   }
 }
 
@@ -667,21 +672,6 @@ function drawHighway(now) {
       ctx.fillText(isBlow ? '↑' : '↓', cx, cy);
     }
 
-    // Wrong-note flash: grey overlay + red strikethrough
-    if (note.wrongFlash > 0) {
-      ctx.globalAlpha = note.wrongFlash * 0.65;
-      ctx.fillStyle   = '#555566';
-      ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 7); ctx.fill();
-      ctx.globalAlpha = note.wrongFlash;
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth   = 3;
-      ctx.beginPath();
-      ctx.moveTo(nx + 4, ny + nh / 2);
-      ctx.lineTo(nx + nw - 4, ny + nh / 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-      note.wrongFlash = Math.max(0, note.wrongFlash - 0.025);
-    }
   }
 
   // Draw harmonica at bottom
@@ -717,12 +707,19 @@ function drawHighway(now) {
 function onNewNoteDetected(note) {
   if (state !== 'PLAYING') return;
   const elapsed = performance.now() - gameStart;
+  let isWrong = false;
   for (const sn of songNotes) {
     if (sn.state !== 'pending') continue;
     if (Math.abs(elapsed - sn.hitTime) <= HIT_WINDOW_MS) {
-      if (note.name !== sn.noteName || note.octave !== sn.noteOctave) {
-        sn.wrongFlash = 1.0;
-      }
+      if (note.name !== sn.noteName || note.octave !== sn.noteOctave) isWrong = true;
+    }
+  }
+  if (!isWrong) return;
+  // Flash whichever harmonica holes produce the played note
+  for (const h of HARMONICA) {
+    if ((h.blow[0] === note.name && h.blow[1] === note.octave) ||
+        (h.draw[0] === note.name && h.draw[1] === note.octave)) {
+      wrongHoles.set(h.hole, { alpha: 1.0 });
     }
   }
 }

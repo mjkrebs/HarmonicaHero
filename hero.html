@@ -643,9 +643,10 @@ function drawHighway(now) {
     const isActive = Math.abs(elapsed - note.hitTime) < HIT_WINDOW_MS && note.state === 'pending';
     const isMiss   = note.state === 'miss';
 
-    const lx = (note.hole - 1) * LANE_W;
-    const pad = 4, nw = LANE_W - pad * 2, nh = NOTE_H - 4;
-    const nx = lx + pad, ny = noteY - NOTE_H / 2;
+    const lx  = (note.hole - 1) * LANE_W;
+    const pad = 4, nw = LANE_W - pad * 2;
+    const nh  = Math.min(Math.max(22, Math.round((note.duration || 1) * 30)), 120);
+    const nx  = lx + pad, ny = noteY - nh / 2;
 
     ctx.beginPath();
     ctx.roundRect(nx, ny, nw, nh, 7);

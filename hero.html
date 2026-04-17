@@ -708,20 +708,27 @@ function onNewNoteDetected(note) {
   if (state !== 'PLAYING') return;
   const elapsed = performance.now() - gameStart;
   let isWrong = false;
+  let expectedHole = 5;
   for (const sn of songNotes) {
     if (sn.state !== 'pending') continue;
     if (Math.abs(elapsed - sn.hitTime) <= HIT_WINDOW_MS) {
-      if (note.name !== sn.noteName || note.octave !== sn.noteOctave) isWrong = true;
+      if (note.name !== sn.noteName || note.octave !== sn.noteOctave) {
+        isWrong = true;
+        expectedHole = sn.hole;
+      }
     }
   }
   if (!isWrong) return;
-  // Flash whichever harmonica holes produce the played note
+  // Match by note NAME only (ignores octave detection errors), pick the
+  // single hole closest to where the player should be playing.
+  let bestHole = null, bestDist = Infinity;
   for (const h of HARMONICA) {
-    if ((h.blow[0] === note.name && h.blow[1] === note.octave) ||
-        (h.draw[0] === note.name && h.draw[1] === note.octave)) {
-      wrongHoles.set(h.hole, { alpha: 1.0 });
+    if (h.blow[0] === note.name || h.draw[0] === note.name) {
+      const dist = Math.abs(h.hole - expectedHole);
+      if (dist < bestDist) { bestDist = dist; bestHole = h.hole; }
     }
   }
+  if (bestHole !== null) wrongHoles.set(bestHole, { alpha: 1.0 });
 }
 
 // ── Hit detection ──

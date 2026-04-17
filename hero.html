@@ -176,6 +176,16 @@
     #startBtn.stop  { background: #991b1b; }
     #startBtn.stop:hover { background: #b91c1c; }
 
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      cursor: pointer;
+    }
+    .toggle-row input { cursor: pointer; accent-color: #1d4ed8; }
+
     /* ── Results overlay ── */
     #results {
       display: none;
@@ -257,6 +267,10 @@
         <label>BPM <span id="bpmLabel">90</span></label>
         <input type="range" id="bpmRange" min="50" max="160" value="90">
       </div>
+      <label class="toggle-row">
+        <input type="checkbox" id="playAlongChk">
+        <span>Play melody along</span>
+      </label>
       <button id="startBtn">START</button>
     </div>
   </div>
@@ -328,27 +342,27 @@ const SONGS = {
   },
   saints: {
     name: 'Oh When the Saints',
-    bpm: 100,
+    bpm: 120,
     notes: [
-      // Oh when the saints
-      {beat:1, hole:4, action:'blow'}, {beat:2, hole:5, action:'blow'},
-      {beat:3, hole:5, action:'draw'}, {beat:5, hole:6, action:'blow'},
-      // Oh when the saints go marching in
-      {beat:7, hole:4, action:'blow'}, {beat:8, hole:5, action:'blow'},
-      {beat:9, hole:5, action:'draw'}, {beat:11, hole:6, action:'blow'},
-      // Oh when the saints go marching in
+      // Oh when the saints (C E F G)
+      {beat:0, hole:4, action:'blow'}, {beat:1, hole:5, action:'blow'},
+      {beat:2, hole:5, action:'draw'}, {beat:3, hole:6, action:'blow'},
+      // Oh when the saints go march-ing in
+      {beat:5, hole:4, action:'blow'}, {beat:6, hole:5, action:'blow'},
+      {beat:7, hole:5, action:'draw'}, {beat:8, hole:6, action:'blow'},
+      {beat:9, hole:6, action:'blow'}, {beat:10, hole:6, action:'blow'},
+      {beat:10.5, hole:6, action:'blow'}, {beat:11, hole:6, action:'blow'},
+      // Oh Lord I want to be (C E F G A G)
       {beat:13, hole:4, action:'blow'}, {beat:14, hole:5, action:'blow'},
-      {beat:15, hole:5, action:'draw'}, {beat:17, hole:6, action:'blow'},
-      {beat:18, hole:5, action:'draw'}, {beat:19, hole:5, action:'blow'},
-      {beat:21, hole:4, action:'draw'},
-      // I want to be in that number
-      {beat:23, hole:5, action:'draw'}, {beat:24, hole:6, action:'blow'},
-      {beat:25, hole:4, action:'blow'}, {beat:26, hole:5, action:'blow'},
-      {beat:27, hole:5, action:'draw'},
-      // When the saints go marching in
-      {beat:29, hole:6, action:'blow'}, {beat:30, hole:5, action:'draw'},
-      {beat:31, hole:5, action:'blow'}, {beat:33, hole:4, action:'draw'},
-      {beat:35, hole:4, action:'blow'},
+      {beat:15, hole:5, action:'draw'}, {beat:16, hole:6, action:'blow'},
+      {beat:17, hole:6, action:'draw'}, {beat:18, hole:6, action:'blow'},
+      // in that num-ber (E G E C)
+      {beat:20, hole:5, action:'blow'}, {beat:21, hole:6, action:'blow'},
+      {beat:22, hole:5, action:'blow'}, {beat:23, hole:4, action:'blow'},
+      // when the saints go march-ing in (E G F E D C)
+      {beat:24, hole:5, action:'blow'}, {beat:25, hole:6, action:'blow'},
+      {beat:26, hole:5, action:'draw'}, {beat:27, hole:5, action:'blow'},
+      {beat:28, hole:4, action:'draw'}, {beat:30, hole:4, action:'blow'},
     ]
   }
 };
@@ -381,6 +395,12 @@ function freqToNoteInfo(freq) {
   const name    = NOTE_NAMES[((rounded % 12) + 12) % 12];
   const octave  = Math.floor(rounded / 12) - 1;
   return { name, octave, cents };
+}
+
+function noteToFreq(name, octave) {
+  const idx = NOTE_NAMES.indexOf(name);
+  const midi = (octave + 1) * 12 + idx;
+  return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
 // ── Pitch detection (same autocorrelation as free play) ──
@@ -443,6 +463,8 @@ const HIT_WINDOW_MS = 280;
 let state = 'IDLE'; // IDLE | COUNTDOWN | PLAYING | RESULTS
 let audioCtx, analyser, micSource;
 let animId = null;
+let audioGameStart = 0;   // audioCtx.currentTime when beat 0 fires
+let playAlongOscs = [];   // scheduled oscillators, kept for early cleanup
 let songNotes = [];   // enriched note objects
 let gameStart = 0;    // performance.now() when beat 0 starts
 let beatMs = 0;       // ms per beat
@@ -659,6 +681,45 @@ function loop(now) {
   animId = requestAnimationFrame(loop);
 }
 
+// ── Play-along synth ──
+function schedulePlayAlong() {
+  stopPlayAlong();
+  for (let i = 0; i < songNotes.length; i++) {
+    const note = songNotes[i];
+    const freq  = noteToFreq(note.noteName, note.noteOctave);
+    const start = audioGameStart + note.hitTime / 1000;
+    const next  = songNotes[i + 1];
+    const dur   = next ? Math.min((next.hitTime - note.hitTime) / 1000 * 0.88, 0.6) : 0.35;
+
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    // Add a touch of the 2nd harmonic for a reedy harmonica colour
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+
+    osc.type  = 'triangle';  osc.frequency.value  = freq;
+    osc2.type = 'sawtooth';  osc2.frequency.value = freq * 2;
+    gain2.gain.value = 0.06;
+
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(0.18, start + 0.015);
+    gain.gain.setValueAtTime(0.18, start + dur - 0.06);
+    gain.gain.linearRampToValueAtTime(0, start + dur);
+
+    osc.connect(gain);     gain.connect(audioCtx.destination);
+    osc2.connect(gain2);  gain2.connect(audioCtx.destination);
+
+    osc.start(start);   osc.stop(start + dur + 0.01);
+    osc2.start(start);  osc2.stop(start + dur + 0.01);
+    playAlongOscs.push(osc, osc2);
+  }
+}
+
+function stopPlayAlong() {
+  playAlongOscs.forEach(o => { try { o.stop(); } catch {} });
+  playAlongOscs = [];
+}
+
 // ── Countdown then start ──
 async function startCountdown() {
   state = 'COUNTDOWN';
@@ -670,8 +731,10 @@ async function startCountdown() {
   countdownVal = 0; // "GO!"
   await delay(600);
 
-  gameStart = performance.now();
+  gameStart      = performance.now();
+  audioGameStart = audioCtx.currentTime;
   state = 'PLAYING';
+  if (document.getElementById('playAlongChk').checked) schedulePlayAlong();
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -679,6 +742,7 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 // ── End game & results ──
 function endGame() {
   state = 'RESULTS';
+  stopPlayAlong();
   const acc = totalNotes ? Math.round((hitNotes / totalNotes) * 100) : 0;
   const grade = acc >= 95 ? 'S' : acc >= 80 ? 'A' : acc >= 65 ? 'B' : acc >= 50 ? 'C' : 'F';
   const labels = { S: 'Perfect!', A: 'Great!', B: 'Good!', C: 'Keep Practicing', F: 'Try Again' };
@@ -732,6 +796,7 @@ async function startGame() {
 
 function stopGame() {
   state = 'IDLE';
+  stopPlayAlong();
   if (animId) { cancelAnimationFrame(animId); animId = null; }
   songNotes = [];
   drawHighway(-1e9);
@@ -761,6 +826,12 @@ document.getElementById('retryBtn').addEventListener('click', () => {
 
 document.getElementById('bpmRange').addEventListener('input', e => {
   document.getElementById('bpmLabel').textContent = e.target.value;
+});
+
+document.getElementById('songSelect').addEventListener('change', e => {
+  const bpm = SONGS[e.target.value].bpm;
+  document.getElementById('bpmRange').value = bpm;
+  document.getElementById('bpmLabel').textContent = bpm;
 });
 
 // Initial draw

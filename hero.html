@@ -40,8 +40,130 @@
     nav a:hover  { color: #e2e8f0; background: #1e2040; }
     nav a.active { color: #fff; background: #1d4ed8; }
 
-    .game-wrap {
+    /* ── Song Picker ── */
+    #view-picker {
+      width: 100%;
+      max-width: 800px;
+      padding: 32px 16px 40px;
       display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .picker-header { text-align: center; }
+    .picker-header h1 {
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .picker-header p { color: #64748b; margin-top: 6px; font-size: 0.95rem; }
+
+    .search-wrap {
+      width: 100%;
+      max-width: 480px;
+      position: relative;
+    }
+    .search-wrap svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #475569;
+      pointer-events: none;
+    }
+    #searchInput {
+      width: 100%;
+      background: #13132a;
+      border: 1px solid #2d3148;
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 12px 16px 12px 42px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #searchInput:focus { border-color: #3b82f6; }
+    #searchInput::placeholder { color: #334155; }
+
+    #songGrid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+    }
+
+    .song-card {
+      background: #0d0d1e;
+      border: 1px solid #1e2040;
+      border-radius: 12px;
+      padding: 18px 20px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .song-card:hover {
+      border-color: #3b82f6;
+      background: #0f0f28;
+      transform: translateY(-2px);
+    }
+    .song-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .song-title { font-size: 1.05rem; font-weight: 700; color: #f1f5f9; line-height: 1.2; }
+    .song-artist { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
+    .song-desc { font-size: 0.78rem; color: #475569; line-height: 1.4; }
+    .song-badges {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .badge-beginner     { background: #14532d; color: #4ade80; }
+    .badge-intermediate { background: #451a03; color: #fb923c; }
+    .badge-advanced     { background: #450a0a; color: #f87171; }
+    .badge-bpm   { background: #1e2040; color: #94a3b8; }
+    .badge-holes { background: #1e2040; color: #94a3b8; }
+
+    .no-results {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: #334155;
+      padding: 40px;
+      font-size: 0.9rem;
+    }
+
+    .picker-error {
+      color: #f87171;
+      background: #450a0a;
+      border: 1px solid #7f1d1d;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 0.85rem;
+      max-width: 480px;
+      text-align: center;
+    }
+
+    /* ── Highway view ── */
+    #view-highway {
+      display: none;
       flex-direction: column;
       align-items: center;
       width: 100%;
@@ -73,8 +195,8 @@
     .stat-val  { font-size: 1.4rem; font-weight: 800; color: #f8fafc; line-height: 1; }
     .stat-label { font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; color: #475569; }
 
-    #comboVal  { color: #facc15; }
-    #accVal    { color: #4ade80; }
+    #comboVal { color: #facc15; }
+    #accVal   { color: #4ade80; }
 
     .stat-sep { width: 1px; height: 30px; background: #1e2040; flex-shrink: 0; }
 
@@ -99,17 +221,15 @@
       flex-wrap: wrap;
     }
 
-    .controls-bar select,
-    .controls-bar input[type=range] {
-      background: #13132a;
-      border: 1px solid #2d3148;
-      color: #e2e8f0;
-      border-radius: 6px;
-      padding: 7px 10px;
+    .song-name-tag {
       font-size: 0.85rem;
+      font-weight: 600;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
     }
-
-    .controls-bar select { flex: 1; min-width: 160px; }
 
     .bpm-inline {
       display: flex;
@@ -118,6 +238,31 @@
       font-size: 0.8rem;
       color: #94a3b8;
       white-space: nowrap;
+    }
+    .controls-bar input[type=range] {
+      appearance: none;
+      -webkit-appearance: none;
+      height: 6px;
+      border-radius: 3px;
+      background: linear-gradient(to right, #3b82f6 var(--pct, 40%), #334155 var(--pct, 40%));
+      border: none;
+      outline: none;
+      cursor: pointer;
+    }
+    .controls-bar input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #f8fafc;
+      border: 2px solid #3b82f6;
+      cursor: pointer;
+    }
+    .controls-bar input[type=range]::-moz-range-thumb {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: #f8fafc;
+      border: 2px solid #3b82f6;
+      cursor: pointer;
     }
 
     .toggle-row {
@@ -148,6 +293,20 @@
     #startBtn.stop  { background: #991b1b; }
     #startBtn.stop:hover { background: #b91c1c; }
 
+    #backBtn {
+      background: transparent;
+      color: #64748b;
+      border: 1px solid #2d3148;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    #backBtn:hover { color: #e2e8f0; border-color: #475569; }
+
     /* ── Results overlay ── */
     #results {
       display: none;
@@ -168,15 +327,17 @@
     #results .grade.B { color: #60a5fa; }
     #results .grade.C { color: #fb923c; }
     #results .grade.F { color: #f87171; }
-    #results h2  { font-size: 1.6rem; color: #f8fafc; }
-    #results p   { font-size: 1rem;   color: #94a3b8; }
+    #results h2 { font-size: 1.6rem; color: #f8fafc; }
+    #results p  { font-size: 1rem;   color: #94a3b8; }
+    #results .btn-row { display: flex; gap: 12px; margin-top: 8px; }
     #results button {
-      margin-top: 8px;
       background: #1d4ed8; color: #fff; border: none;
       padding: 12px 32px; border-radius: 8px; font-size: 1rem;
-      font-weight: 700; cursor: pointer;
+      font-weight: 700; cursor: pointer; transition: background 0.2s;
     }
     #results button:hover { background: #2563eb; }
+    #results #chooseSongBtn { background: #334155; }
+    #results #chooseSongBtn:hover { background: #475569; }
   </style>
 </head>
 <body>
@@ -186,7 +347,27 @@
   <a href="hero.html" class="active">Hero Mode</a>
 </nav>
 
-<div class="game-wrap">
+<!-- ── Song Picker ── -->
+<div id="view-picker">
+  <div class="picker-header">
+    <h1>HarmonicaHero</h1>
+    <p>Pick a song and start playing</p>
+  </div>
+
+  <div class="search-wrap">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <input id="searchInput" type="text" placeholder="Search by title or artist…" autocomplete="off">
+  </div>
+
+  <div id="songGrid">
+    <div class="no-results" style="color:#334155">Loading songs…</div>
+  </div>
+</div>
+
+<!-- ── Highway ── -->
+<div id="view-highway">
   <canvas id="highway"></canvas>
 
   <div class="status-bar">
@@ -209,13 +390,7 @@
   </div>
 
   <div class="controls-bar">
-    <select id="songSelect">
-      <option value="mary">Mary Had a Little Lamb</option>
-      <option value="twinkle">Twinkle Twinkle</option>
-      <option value="saints">Oh When the Saints</option>
-      <option value="birthday">Happy Birthday</option>
-      <option value="jurassic">Jurassic Park Theme</option>
-    </select>
+    <span class="song-name-tag" id="songNameTag"></span>
     <div class="bpm-inline">
       BPM <span id="bpmLabel">90</span>
       <input type="range" id="bpmRange" min="50" max="180" value="90" style="width:90px">
@@ -223,146 +398,23 @@
     <label class="toggle-row">
       <input type="checkbox" id="playAlongChk"> Play melody
     </label>
+    <button id="backBtn">← Songs</button>
     <button id="startBtn">START</button>
   </div>
 </div>
 
+<!-- ── Results overlay ── -->
 <div id="results">
   <div class="grade" id="resGrade">S</div>
   <h2 id="resTitle">Amazing!</h2>
   <p id="resStats"></p>
-  <button id="retryBtn">Play Again</button>
+  <div class="btn-row">
+    <button id="retryBtn">Play Again</button>
+    <button id="chooseSongBtn">Choose Song</button>
+  </div>
 </div>
 
 <script>
-// ── Song data ──────────────────────────────────────────────────────────────
-const SONGS = {
-  mary: {
-    name: 'Mary Had a Little Lamb',
-    bpm: 90,
-    notes: [
-      {beat:0,  hole:5, action:'blow'}, {beat:1,  hole:4, action:'draw'},
-      {beat:2,  hole:4, action:'blow'}, {beat:3,  hole:4, action:'draw'},
-      {beat:4,  hole:5, action:'blow'}, {beat:5,  hole:5, action:'blow'},
-      {beat:6,  hole:5, action:'blow'},
-      {beat:8,  hole:4, action:'draw'}, {beat:9,  hole:4, action:'draw'},
-      {beat:10, hole:4, action:'draw'},
-      {beat:12, hole:5, action:'blow'}, {beat:13, hole:6, action:'blow'},
-      {beat:14, hole:6, action:'blow'},
-      {beat:16, hole:5, action:'blow'}, {beat:17, hole:4, action:'draw'},
-      {beat:18, hole:4, action:'blow'}, {beat:19, hole:4, action:'draw'},
-      {beat:20, hole:5, action:'blow'}, {beat:21, hole:5, action:'blow'},
-      {beat:22, hole:5, action:'blow'}, {beat:23, hole:5, action:'blow'},
-      {beat:24, hole:4, action:'draw'}, {beat:25, hole:4, action:'draw'},
-      {beat:26, hole:5, action:'blow'}, {beat:27, hole:4, action:'draw'},
-      {beat:28, hole:4, action:'blow'},
-    ]
-  },
-  twinkle: {
-    name: 'Twinkle Twinkle',
-    bpm: 100,
-    notes: [
-      {beat:0,  hole:4, action:'blow'}, {beat:1,  hole:4, action:'blow'},
-      {beat:2,  hole:6, action:'blow'}, {beat:3,  hole:6, action:'blow'},
-      {beat:4,  hole:6, action:'draw'}, {beat:5,  hole:6, action:'draw'},
-      {beat:6,  hole:6, action:'blow'},
-      {beat:8,  hole:5, action:'draw'}, {beat:9,  hole:5, action:'draw'},
-      {beat:10, hole:5, action:'blow'}, {beat:11, hole:5, action:'blow'},
-      {beat:12, hole:4, action:'draw'}, {beat:13, hole:4, action:'draw'},
-      {beat:14, hole:4, action:'blow'},
-      {beat:16, hole:6, action:'blow'}, {beat:17, hole:6, action:'blow'},
-      {beat:18, hole:5, action:'draw'}, {beat:19, hole:5, action:'draw'},
-      {beat:20, hole:5, action:'blow'}, {beat:21, hole:5, action:'blow'},
-      {beat:22, hole:4, action:'draw'},
-      {beat:24, hole:6, action:'blow'}, {beat:25, hole:6, action:'blow'},
-      {beat:26, hole:5, action:'draw'}, {beat:27, hole:5, action:'draw'},
-      {beat:28, hole:5, action:'blow'}, {beat:29, hole:5, action:'blow'},
-      {beat:30, hole:4, action:'draw'},
-      {beat:32, hole:4, action:'blow'}, {beat:33, hole:4, action:'blow'},
-      {beat:34, hole:6, action:'blow'}, {beat:35, hole:6, action:'blow'},
-      {beat:36, hole:6, action:'draw'}, {beat:37, hole:6, action:'draw'},
-      {beat:38, hole:6, action:'blow'},
-      {beat:40, hole:5, action:'draw'}, {beat:41, hole:5, action:'draw'},
-      {beat:42, hole:5, action:'blow'}, {beat:43, hole:5, action:'blow'},
-      {beat:44, hole:4, action:'draw'}, {beat:45, hole:4, action:'draw'},
-      {beat:46, hole:4, action:'blow'},
-    ]
-  },
-  saints: {
-    name: 'Oh When the Saints',
-    bpm: 120,
-    notes: [
-      {beat:0,  hole:4, action:'blow'}, {beat:1,  hole:5, action:'blow'},
-      {beat:2,  hole:5, action:'draw'}, {beat:3,  hole:6, action:'blow'},
-      {beat:5,  hole:4, action:'blow'}, {beat:6,  hole:5, action:'blow'},
-      {beat:7,  hole:5, action:'draw'}, {beat:8,  hole:6, action:'blow'},
-      {beat:10, hole:6, action:'blow'}, {beat:11, hole:6, action:'blow'},
-      {beat:11.5, hole:6, action:'blow'}, {beat:12, hole:6, action:'blow'},
-      {beat:13, hole:4, action:'blow'}, {beat:14, hole:5, action:'blow'},
-      {beat:15, hole:5, action:'draw'}, {beat:16, hole:6, action:'blow'},
-      {beat:17, hole:6, action:'draw'}, {beat:18, hole:6, action:'blow'},
-      {beat:20, hole:5, action:'blow'}, {beat:21, hole:6, action:'blow'},
-      {beat:22, hole:5, action:'blow'}, {beat:23, hole:4, action:'blow'},
-      {beat:24, hole:5, action:'blow'}, {beat:25, hole:6, action:'blow'},
-      {beat:26, hole:5, action:'draw'}, {beat:27, hole:5, action:'blow'},
-      {beat:28, hole:4, action:'draw'}, {beat:30, hole:4, action:'blow'},
-    ]
-  },
-  birthday: {
-    name: 'Happy Birthday',
-    bpm: 140,
-    notes: [
-      // Hap-py Birth-day to you (G G A G C B)
-      {beat:0,   hole:6, action:'blow'}, {beat:0.5, hole:6, action:'blow'},
-      {beat:1,   hole:6, action:'draw'}, {beat:2,   hole:6, action:'blow'},
-      {beat:3,   hole:7, action:'blow'}, {beat:5,   hole:7, action:'draw'},
-      // Hap-py Birth-day to you (G G A G D C)
-      {beat:7,   hole:6, action:'blow'}, {beat:7.5, hole:6, action:'blow'},
-      {beat:8,   hole:6, action:'draw'}, {beat:9,   hole:6, action:'blow'},
-      {beat:10,  hole:8, action:'draw'}, {beat:12,  hole:7, action:'blow'},
-      // Hap-py Birth-day dear [name] (G G G' E C B A)
-      {beat:14,  hole:6, action:'blow'}, {beat:14.5, hole:6, action:'blow'},
-      {beat:15,  hole:9, action:'blow'}, {beat:16,  hole:8, action:'blow'},
-      {beat:17,  hole:7, action:'blow'}, {beat:18.5, hole:7, action:'draw'},
-      {beat:19,  hole:6, action:'draw'},
-      // Hap-py Birth-day to you (F F E C D C)
-      {beat:21,  hole:9, action:'draw'}, {beat:21.5, hole:9, action:'draw'},
-      {beat:22,  hole:8, action:'blow'}, {beat:23,  hole:7, action:'blow'},
-      {beat:24,  hole:8, action:'draw'}, {beat:26,  hole:7, action:'blow'},
-    ]
-  },
-  jurassic: {
-    name: 'Jurassic Park Theme',
-    bpm: 76,
-    notes: [
-      // Opening ascending arpeggio: C E G C (heroic)
-      {beat:0,   hole:4, action:'blow'},
-      {beat:2,   hole:5, action:'blow'}, {beat:2.5, hole:6, action:'blow'},
-      {beat:3,   hole:7, action:'blow'},
-      // Come back down: G E C
-      {beat:5,   hole:6, action:'blow'}, {beat:5.5, hole:5, action:'blow'},
-      {beat:6,   hole:4, action:'blow'},
-      // Phrase 2 — up a third: E G A C
-      {beat:8,   hole:5, action:'blow'},
-      {beat:10,  hole:6, action:'blow'}, {beat:10.5, hole:6, action:'draw'},
-      {beat:11,  hole:7, action:'blow'},
-      // Come back: A G E
-      {beat:13,  hole:6, action:'draw'}, {beat:13.5, hole:6, action:'blow'},
-      {beat:14,  hole:5, action:'blow'},
-      // Climax run: G A C D E (ascending)
-      {beat:16,  hole:6, action:'blow'}, {beat:16.5, hole:6, action:'draw'},
-      {beat:17,  hole:7, action:'blow'}, {beat:17.5, hole:8, action:'draw'},
-      {beat:18,  hole:8, action:'blow'},
-      // Resolution: D C B G
-      {beat:20,  hole:8, action:'draw'}, {beat:20.5, hole:7, action:'blow'},
-      {beat:21,  hole:7, action:'draw'}, {beat:22,  hole:6, action:'blow'},
-      // Final cadence: C D E (long)
-      {beat:24,  hole:7, action:'blow'}, {beat:24.5, hole:8, action:'draw'},
-      {beat:25,  hole:8, action:'blow'},
-    ]
-  },
-};
-
 // ── Harmonica reference ──
 const HARMONICA = [
   { hole:1,  blow:['C',4], draw:['D',4] },
@@ -377,33 +429,21 @@ const HARMONICA = [
   { hole:10, blow:['C',7], draw:['A',6] },
 ];
 
-// Rainbow colours, one per hole (1–10)
 const HOLE_COLORS = [
-  '#ef4444', // 1  red
-  '#f97316', // 2  orange
-  '#f59e0b', // 3  amber
-  '#eab308', // 4  yellow
-  '#84cc16', // 5  lime
-  '#22c55e', // 6  green
-  '#06b6d4', // 7  cyan
-  '#3b82f6', // 8  blue
-  '#8b5cf6', // 9  violet
-  '#ec4899', // 10 pink
+  '#ef4444','#f97316','#f59e0b','#eab308','#84cc16',
+  '#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899',
 ];
 
-function holeNote(hole, action) {
-  return HARMONICA[hole - 1][action];
-}
+function holeNote(hole, action) { return HARMONICA[hole - 1][action]; }
 
 const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 
 function freqToNoteInfo(freq) {
   const noteNum = 12 * Math.log2(freq / 440) + 69;
   const rounded = Math.round(noteNum);
-  const cents   = Math.round((noteNum - rounded) * 100);
   const name    = NOTE_NAMES[((rounded % 12) + 12) % 12];
   const octave  = Math.floor(rounded / 12) - 1;
-  return { name, octave, cents };
+  return { name, octave };
 }
 
 function noteToFreq(name, octave) {
@@ -457,14 +497,15 @@ function autoCorrelate(buf, sampleRate) {
   return sampleRate / T;
 }
 
-// ── Canvas setup (dynamic sizing) ──
+// ── Canvas setup ──
 const canvas = document.getElementById('highway');
 const ctx    = canvas.getContext('2d');
 
-const NOTE_H    = 40;
-const TRAVEL_MS = 2200;
+const NOTE_H        = 40;
+const TRAVEL_MS     = 2200;
 const HIT_WINDOW_MS = 280;
-const HARM_H    = 82; // harmonica section height at bottom
+const HARM_H        = 82;
+const INTRO_BEATS   = 3;
 
 let CW, CH, LANE_W, HARM_Y, STRIKE_Y, NOTE_SPEED;
 
@@ -482,21 +523,21 @@ resizeCanvas();
 window.addEventListener('resize', () => { resizeCanvas(); drawHighway(-1e9); });
 
 // ── Game state ──
-const INTRO_BEATS = 3;
-let state        = 'IDLE';
+let state          = 'PICKER';
 let audioCtx, analyser, micSource;
-let animId       = null;
+let animId         = null;
 let audioGameStart = 0;
 let playAlongOscs  = [];
-let songNotes    = [];
-let gameStart    = 0;
-let beatMs       = 0;
+let songNotes      = [];
+let gameStart      = 0;
+let beatMs         = 0;
 let score = 0, combo = 0, totalNotes = 0, hitNotes = 0;
 let currentNote      = null;
 let lastDetectedKey  = '';
-let flashHoles       = new Map(); // hole → { alpha, color }  (correct hit — coloured glow)
-let wrongHoles       = new Map(); // hole → { alpha }          (wrong note — grey/red)
+let flashHoles       = new Map();
+let wrongHoles       = new Map();
 let countdownVal     = 0;
+let currentSong      = null;   // the loaded song JSON
 
 function buildNotes(song, bpm) {
   beatMs = 60000 / bpm;
@@ -508,7 +549,6 @@ function buildNotes(song, bpm) {
 
 // ── Rendering ──
 function drawHarmonica(now) {
-  // Body
   const grad = ctx.createLinearGradient(0, HARM_Y, 0, CH);
   grad.addColorStop(0, '#1a1020');
   grad.addColorStop(1, '#0d0810');
@@ -517,12 +557,11 @@ function drawHarmonica(now) {
   ctx.roundRect(0, HARM_Y, CW, HARM_H, [0, 0, 8, 8]);
   ctx.fill();
 
-  // Top rim
   ctx.fillStyle = '#2a2838';
   ctx.fillRect(0, HARM_Y, CW, 5);
 
-  const holeTop  = HARM_Y + 14;
-  const holeH    = HARM_H - 28;
+  const holeTop = HARM_Y + 14;
+  const holeH   = HARM_H - 28;
 
   for (let i = 0; i < 10; i++) {
     const hole  = i + 1;
@@ -531,17 +570,14 @@ function drawHarmonica(now) {
     const hw    = LANE_W - 10;
     const x     = cx - hw / 2;
 
-    // Flash state for this hole
     const flash = flashHoles.get(hole);
     const wrong = wrongHoles.get(hole);
 
-    // Shadow depth
     ctx.fillStyle = '#00000088';
     ctx.beginPath();
     ctx.roundRect(x + 2, holeTop + 3, hw, holeH, 5);
     ctx.fill();
 
-    // Hole body
     const isLit   = flash && flash.alpha > 0;
     const isWrong = wrong && wrong.alpha > 0;
     ctx.fillStyle   = isLit ? color : isWrong ? '#555566' : color + '28';
@@ -555,7 +591,6 @@ function drawHarmonica(now) {
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Hole number
     ctx.fillStyle    = isLit ? '#ffffff' : isWrong ? '#ff9999' : '#ffffff55';
     ctx.font         = `bold ${Math.round(LANE_W * 0.22)}px system-ui`;
     ctx.textAlign    = 'center';
@@ -563,63 +598,43 @@ function drawHarmonica(now) {
     ctx.fillText(hole, cx, holeTop + holeH / 2);
   }
 
-  // Decay flash effects
-  for (const [hole, f] of flashHoles) {
-    f.alpha -= 0.035;
-    if (f.alpha <= 0) flashHoles.delete(hole);
-  }
-  for (const [hole, w] of wrongHoles) {
-    w.alpha -= 0.025;
-    if (w.alpha <= 0) wrongHoles.delete(hole);
-  }
+  for (const [hole, f] of flashHoles) { f.alpha -= 0.035; if (f.alpha <= 0) flashHoles.delete(hole); }
+  for (const [hole, w] of wrongHoles) { w.alpha -= 0.025; if (w.alpha <= 0) wrongHoles.delete(hole); }
 }
 
 function drawHighway(now) {
   ctx.clearRect(0, 0, CW, CH);
 
-  // Background
   ctx.fillStyle = '#080810';
   ctx.fillRect(0, 0, CW, CH);
 
-  // Lane backgrounds + dividers
   for (let i = 0; i < 10; i++) {
     const color = HOLE_COLORS[i];
     const lx    = i * LANE_W;
-
     ctx.fillStyle = color + '0c';
     ctx.fillRect(lx, 0, LANE_W, HARM_Y);
-
     if (i > 0) {
       ctx.strokeStyle = color + '22';
       ctx.lineWidth   = 1;
-      ctx.beginPath();
-      ctx.moveTo(lx, 0);
-      ctx.lineTo(lx, HARM_Y);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, HARM_Y); ctx.stroke();
     }
   }
 
-  // Horizontal beat lines
   if (state === 'PLAYING' && beatMs > 0) {
-    const elapsed = now - gameStart;
+    const elapsed      = now - gameStart;
     const lineInterval = LANE_W * 1.5;
     for (let y = ((elapsed * NOTE_SPEED) % lineInterval); y < HARM_Y; y += lineInterval) {
       ctx.strokeStyle = '#ffffff08';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(CW, y);
-      ctx.stroke();
+      ctx.lineWidth   = 1;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CW, y); ctx.stroke();
     }
   }
 
   const elapsed = (state === 'PLAYING' || state === 'RESULTS') ? now - gameStart : -1;
 
-  // Notes
   for (const note of songNotes) {
     if (note.state === 'hit') continue;
-
-    const noteY    = STRIKE_Y - (note.hitTime - elapsed) * NOTE_SPEED;
+    const noteY = STRIKE_Y - (note.hitTime - elapsed) * NOTE_SPEED;
     if (noteY < -NOTE_H || noteY > CH) continue;
 
     const color    = HOLE_COLORS[note.hole - 1];
@@ -627,12 +642,9 @@ function drawHighway(now) {
     const isActive = Math.abs(elapsed - note.hitTime) < HIT_WINDOW_MS && note.state === 'pending';
     const isMiss   = note.state === 'miss';
 
-    const lx  = (note.hole - 1) * LANE_W;
-    const pad = 4;
-    const nw  = LANE_W - pad * 2;
-    const nh  = NOTE_H - 4;
-    const nx  = lx + pad;
-    const ny  = noteY - NOTE_H / 2;
+    const lx = (note.hole - 1) * LANE_W;
+    const pad = 4, nw = LANE_W - pad * 2, nh = NOTE_H - 4;
+    const nx = lx + pad, ny = noteY - NOTE_H / 2;
 
     ctx.beginPath();
     ctx.roundRect(nx, ny, nw, nh, 7);
@@ -646,42 +658,29 @@ function drawHighway(now) {
       ctx.strokeStyle = isActive ? color         : color + '77';
       ctx.lineWidth   = isActive ? 2.5 : 1.5;
     } else {
-      // Draw: darker/hatched feel — use 60% opacity
       ctx.fillStyle   = isActive ? color + '88' : color + '1e';
       ctx.strokeStyle = isActive ? color + 'cc' : color + '55';
       ctx.lineWidth   = isActive ? 2.5 : 1.5;
     }
 
-    if (isActive) {
-      ctx.shadowColor = color;
-      ctx.shadowBlur  = 10;
-    }
-    ctx.fill();
-    ctx.stroke();
+    if (isActive) { ctx.shadowColor = color; ctx.shadowBlur = 10; }
+    ctx.fill(); ctx.stroke();
     ctx.shadowBlur = 0;
 
     if (!isMiss) {
-      const cx = lx + LANE_W / 2;
-      const cy = noteY;
-
-      // Arrow
-      ctx.fillStyle    = isActive ? '#fff' : (isMiss ? '#444' : color + 'cc');
+      ctx.fillStyle    = isActive ? '#fff' : color + 'cc';
       ctx.font         = `bold ${Math.round(LANE_W * 0.28)}px system-ui`;
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(isBlow ? '↑' : '↓', cx, cy);
+      ctx.fillText(isBlow ? '↑' : '↓', lx + LANE_W / 2, noteY);
     }
-
   }
 
-  // Draw harmonica at bottom
   drawHarmonica(now);
 
-  // Score overlay (top-left)
-  ctx.fillStyle    = '#ffffff18';
-  ctx.beginPath();
-  ctx.roundRect(8, 8, 130, 56, 8);
-  ctx.fill();
+  // Score overlay
+  ctx.fillStyle = '#ffffff18';
+  ctx.beginPath(); ctx.roundRect(8, 8, 130, 56, 8); ctx.fill();
   ctx.fillStyle    = '#f8fafc';
   ctx.font         = `bold ${Math.round(CW * 0.042)}px system-ui`;
   ctx.textAlign    = 'left';
@@ -691,7 +690,6 @@ function drawHighway(now) {
   ctx.font      = `bold ${Math.round(CW * 0.026)}px system-ui`;
   ctx.fillText(`×${comboMultiplier()} COMBO`, 16, 44);
 
-  // Countdown overlay
   if (state === 'COUNTDOWN') {
     ctx.fillStyle = '#080810cc';
     ctx.fillRect(0, 0, CW, CH);
@@ -703,24 +701,20 @@ function drawHighway(now) {
   }
 }
 
-// ── Wrong-note detection (fires once per new pitch event) ──
+// ── Wrong-note detection ──
 function onNewNoteDetected(note) {
   if (state !== 'PLAYING') return;
   const elapsed = performance.now() - gameStart;
-  let isWrong = false;
-  let expectedHole = 5;
+  let isWrong = false, expectedHole = 5;
   for (const sn of songNotes) {
     if (sn.state !== 'pending') continue;
     if (Math.abs(elapsed - sn.hitTime) <= HIT_WINDOW_MS) {
       if (note.name !== sn.noteName || note.octave !== sn.noteOctave) {
-        isWrong = true;
-        expectedHole = sn.hole;
+        isWrong = true; expectedHole = sn.hole;
       }
     }
   }
   if (!isWrong) return;
-  // Match by note NAME only (ignores octave detection errors), pick the
-  // single hole closest to where the player should be playing.
   let bestHole = null, bestDist = Infinity;
   for (const h of HARMONICA) {
     if (h.blow[0] === note.name || h.draw[0] === note.name) {
@@ -738,20 +732,16 @@ function checkHits(now) {
 
   for (const note of songNotes) {
     if (note.state !== 'pending') continue;
-
     const diff = elapsed - note.hitTime;
 
     if (diff > HIT_WINDOW_MS) {
-      note.state = 'miss';
-      combo = 0;
-      updateUI();
-      continue;
+      note.state = 'miss'; combo = 0; updateUI(); continue;
     }
 
     if (Math.abs(diff) <= HIT_WINDOW_MS && currentNote) {
       if (currentNote.name === note.noteName && currentNote.octave === note.noteOctave) {
         note.state = 'hit';
-        const pts  = Math.abs(diff) < 100 ? 100 : 50;
+        const pts = Math.abs(diff) < 100 ? 100 : 50;
         combo++;
         score += pts * comboMultiplier();
         hitNotes++;
@@ -793,8 +783,7 @@ function loop(now) {
       const key = currentNote.name + currentNote.octave;
       if (key !== lastDetectedKey) { lastDetectedKey = key; onNewNoteDetected(currentNote); }
     } else {
-      currentNote = null;
-      lastDetectedKey = '';
+      currentNote = null; lastDetectedKey = '';
       document.getElementById('detNote').textContent = '--';
       document.getElementById('detNote').classList.remove('active');
       document.getElementById('detOct').textContent  = '';
@@ -814,14 +803,14 @@ function swingBeat(beat, ratio = 0.67) {
 function schedulePlayAlong() {
   stopPlayAlong();
   for (let i = 0; i < songNotes.length; i++) {
-    const note     = songNotes[i];
-    const freq     = noteToFreq(note.noteName, note.noteOctave);
-    const swung    = swingBeat(note.beat);
+    const note      = songNotes[i];
+    const freq      = noteToFreq(note.noteName, note.noteOctave);
+    const swung     = swingBeat(note.beat);
     const nextSwung = songNotes[i+1] ? swingBeat(songNotes[i+1].beat) : note.beat + 2;
-    const jitter   = (Math.random() - 0.5) * 0.024;
-    const start    = audioGameStart + (swung + INTRO_BEATS) * beatMs / 1000 + jitter;
-    const dur      = Math.min((nextSwung - swung) * beatMs / 1000 * 0.80, 0.55);
-    const vel      = 0.14 + Math.random() * 0.06;
+    const jitter    = (Math.random() - 0.5) * 0.024;
+    const start     = audioGameStart + (swung + INTRO_BEATS) * beatMs / 1000 + jitter;
+    const dur       = Math.min((nextSwung - swung) * beatMs / 1000 * 0.80, 0.55);
+    const vel       = 0.14 + Math.random() * 0.06;
 
     const master = audioCtx.createGain();
     master.gain.setValueAtTime(0, start);
@@ -854,8 +843,7 @@ function stopPlayAlong() {
 async function startCountdown() {
   state = 'COUNTDOWN';
   for (let i = 3; i >= 1; i--) { countdownVal = i; await delay(900); }
-  countdownVal = 0;
-  await delay(600);
+  countdownVal = 0; await delay(600);
   gameStart      = performance.now();
   audioGameStart = audioCtx.currentTime;
   state = 'PLAYING';
@@ -883,12 +871,11 @@ function endGame() {
 
 // ── Start / Stop ──
 async function startGame() {
-  const songKey = document.getElementById('songSelect').value;
-  const bpm     = parseInt(document.getElementById('bpmRange').value, 10);
-  const song    = SONGS[songKey];
+  if (!currentSong) return;
+  const bpm = parseInt(document.getElementById('bpmRange').value, 10);
 
-  score = 0; combo = 0; hitNotes = 0; flashHoles.clear();
-  songNotes  = buildNotes(song, bpm);
+  score = 0; combo = 0; hitNotes = 0; flashHoles.clear(); wrongHoles.clear();
+  songNotes  = buildNotes(currentSong, bpm);
   totalNotes = songNotes.length;
   updateUI();
 
@@ -917,11 +904,120 @@ function stopGame() {
   state = 'IDLE';
   stopPlayAlong();
   if (animId) { cancelAnimationFrame(animId); animId = null; }
-  songNotes = []; flashHoles.clear();
+  songNotes = []; flashHoles.clear(); wrongHoles.clear();
   drawHighway(-1e9);
   document.getElementById('startBtn').textContent = 'START';
   document.getElementById('startBtn').classList.remove('stop');
 }
+
+// ── View routing ──
+function showPicker() {
+  stopGame();
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('view-highway').style.display = 'none';
+  document.getElementById('view-picker').style.display  = '';
+  state = 'PICKER';
+}
+
+function showHighway(song) {
+  currentSong = song;
+  document.getElementById('view-picker').style.display  = 'none';
+  document.getElementById('view-highway').style.display = 'flex';
+  document.getElementById('songNameTag').textContent    = song.title;
+  const slider = document.getElementById('bpmRange');
+  slider.value = song.bpm;
+  document.getElementById('bpmLabel').textContent = song.bpm;
+  syncBpmSlider();
+  state = 'IDLE';
+  if (animId) cancelAnimationFrame(animId);
+  animId = requestAnimationFrame(loop);
+}
+
+// ── BPM slider fill ──
+function syncBpmSlider() {
+  const s = document.getElementById('bpmRange');
+  const pct = ((s.value - s.min) / (s.max - s.min) * 100).toFixed(1) + '%';
+  s.style.setProperty('--pct', pct);
+}
+
+// ── Song picker ──
+let allSongs = [];
+
+function fuzzyMatch(query, text) {
+  if (!query) return true;
+  query = query.toLowerCase().trim();
+  text  = text.toLowerCase();
+  let qi = 0;
+  for (const ch of text) {
+    if (ch === query[qi]) qi++;
+    if (qi === query.length) return true;
+  }
+  return false;
+}
+
+function renderSongGrid(songs) {
+  const grid = document.getElementById('songGrid');
+  if (!songs.length) {
+    grid.innerHTML = '<div class="no-results">No songs match your search.</div>';
+    return;
+  }
+  grid.innerHTML = songs.map(s => `
+    <div class="song-card" data-id="${s.id}">
+      <div class="song-card-top">
+        <div>
+          <div class="song-title">${s.title}</div>
+          <div class="song-artist">${s.artist}</div>
+        </div>
+      </div>
+      <div class="song-desc">${s.description || ''}</div>
+      <div class="song-badges">
+        <span class="badge badge-${s.difficulty}">${s.difficulty}</span>
+        <span class="badge badge-bpm">${s.bpm} BPM</span>
+        <span class="badge badge-holes">Holes ${s.holeRange[0]}–${s.holeRange[1]}</span>
+        <span class="badge badge-bpm">${s.timeSignature}</span>
+      </div>
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('.song-card').forEach(card => {
+    card.addEventListener('click', async () => {
+      const meta = allSongs.find(s => s.id === card.dataset.id);
+      if (!meta) return;
+      card.style.opacity = '0.5';
+      try {
+        const res  = await fetch(meta.file);
+        if (!res.ok) throw new Error(res.statusText);
+        const song = await res.json();
+        showHighway(song);
+      } catch (e) {
+        card.style.opacity = '';
+        document.getElementById('songGrid').insertAdjacentHTML('afterbegin',
+          `<div class="picker-error">Could not load song. Make sure you're running via a local server (not file://).<br><small>${e.message}</small></div>`
+        );
+      }
+    });
+  });
+}
+
+async function loadManifest() {
+  try {
+    const res  = await fetch('resources/tabs/index.json');
+    if (!res.ok) throw new Error(res.statusText);
+    allSongs = await res.json();
+    renderSongGrid(allSongs);
+  } catch (e) {
+    document.getElementById('songGrid').innerHTML =
+      `<div class="picker-error">Could not load song list.<br>Make sure you're serving the app via a local server (not file://).<br><small>${e.message}</small></div>`;
+  }
+}
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  const q = e.target.value;
+  const filtered = allSongs.filter(s =>
+    fuzzyMatch(q, s.title) || fuzzyMatch(q, s.artist)
+  );
+  renderSongGrid(filtered);
+});
 
 // ── Controls ──
 document.getElementById('startBtn').addEventListener('click', async () => {
@@ -930,10 +1026,13 @@ document.getElementById('startBtn').addEventListener('click', async () => {
     document.getElementById('startBtn').textContent = 'STOP';
     document.getElementById('startBtn').classList.add('stop');
     await startGame();
-  } else {
+  } else if (state === 'PLAYING' || state === 'COUNTDOWN') {
     stopGame();
   }
 });
+
+document.getElementById('backBtn').addEventListener('click', showPicker);
+document.getElementById('chooseSongBtn').addEventListener('click', showPicker);
 
 document.getElementById('retryBtn').addEventListener('click', () => {
   document.getElementById('results').classList.remove('show');
@@ -945,15 +1044,11 @@ document.getElementById('retryBtn').addEventListener('click', () => {
 
 document.getElementById('bpmRange').addEventListener('input', e => {
   document.getElementById('bpmLabel').textContent = e.target.value;
+  syncBpmSlider();
 });
 
-document.getElementById('songSelect').addEventListener('change', e => {
-  const bpm = SONGS[e.target.value].bpm;
-  document.getElementById('bpmRange').value = bpm;
-  document.getElementById('bpmLabel').textContent = bpm;
-});
-
-drawHighway(-1e9);
+// ── Init ──
+loadManifest();
 </script>
 </body>
 </html>

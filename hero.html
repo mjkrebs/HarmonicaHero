@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HarmonicaHero — Hero Mode</title>
+  <script src="resources/tabs/songs-bundle.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -980,35 +981,16 @@ function renderSongGrid(songs) {
   `).join('');
 
   grid.querySelectorAll('.song-card').forEach(card => {
-    card.addEventListener('click', async () => {
-      const meta = allSongs.find(s => s.id === card.dataset.id);
-      if (!meta) return;
-      card.style.opacity = '0.5';
-      try {
-        const res  = await fetch(meta.file);
-        if (!res.ok) throw new Error(res.statusText);
-        const song = await res.json();
-        showHighway(song);
-      } catch (e) {
-        card.style.opacity = '';
-        document.getElementById('songGrid').insertAdjacentHTML('afterbegin',
-          `<div class="picker-error">Could not load song. Make sure you're running via a local server (not file://).<br><small>${e.message}</small></div>`
-        );
-      }
+    card.addEventListener('click', () => {
+      const song = window.SONGS_DATA[card.dataset.id];
+      if (song) showHighway(song);
     });
   });
 }
 
-async function loadManifest() {
-  try {
-    const res  = await fetch('resources/tabs/index.json');
-    if (!res.ok) throw new Error(res.statusText);
-    allSongs = await res.json();
-    renderSongGrid(allSongs);
-  } catch (e) {
-    document.getElementById('songGrid').innerHTML =
-      `<div class="picker-error">Could not load song list.<br>Make sure you're serving the app via a local server (not file://).<br><small>${e.message}</small></div>`;
-  }
+function loadManifest() {
+  allSongs = window.SONGS_MANIFEST || [];
+  renderSongGrid(allSongs);
 }
 
 document.getElementById('searchInput').addEventListener('input', e => {

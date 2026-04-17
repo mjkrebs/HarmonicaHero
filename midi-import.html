@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HarmonicaHero — MIDI Import</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a12;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    nav {
+      width: 100%;
+      background: #13132a;
+      border-bottom: 1px solid #1e2040;
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      padding: 10px 16px;
+    }
+    nav a {
+      color: #64748b;
+      text-decoration: none;
+      padding: 7px 20px;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      transition: all 0.15s;
+    }
+    nav a:hover  { color: #e2e8f0; background: #1e2040; }
+    nav a.active { color: #fff; background: #1d4ed8; }
+
+    .container {
+      width: 100%;
+      max-width: 760px;
+      padding: 32px 16px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .page-header h1 {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: #f1f5f9;
+    }
+    .page-header p { color: #64748b; margin-top: 6px; font-size: 0.9rem; }
+
+    /* ── Drop zone ── */
+    #drop-zone {
+      border: 2px dashed #2d3148;
+      border-radius: 14px;
+      padding: 56px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    #drop-zone:hover, #drop-zone.drag-over {
+      border-color: #3b82f6;
+      background: #0d0d28;
+    }
+    #drop-zone svg { color: #334155; }
+    #drop-zone .drop-label { font-size: 1rem; font-weight: 600; color: #94a3b8; }
+    #drop-zone .drop-sub   { font-size: 0.8rem; color: #475569; }
+    #drop-zone input { display: none; }
+
+    /* ── Sections ── */
+    .section {
+      background: #0d0d1e;
+      border: 1px solid #1e2040;
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .section h2 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #475569;
+    }
+
+    /* ── Form fields ── */
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 0.75rem; color: #64748b; font-weight: 600; letter-spacing: 0.5px; }
+    .field input, .field select {
+      background: #13132a;
+      border: 1px solid #2d3148;
+      color: #e2e8f0;
+      border-radius: 7px;
+      padding: 9px 12px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .field input:focus, .field select:focus { border-color: #3b82f6; }
+    .field input::placeholder { color: #334155; }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .stat-chip {
+      background: #13132a;
+      border: 1px solid #1e2040;
+      border-radius: 8px;
+      padding: 8px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stat-chip .val { font-size: 1.2rem; font-weight: 800; color: #f1f5f9; }
+    .stat-chip .lbl { font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; color: #475569; }
+
+    /* ── Ambiguity / chromatic warnings ── */
+    .warn-item {
+      background: #13132a;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .warn-note {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #f1f5f9;
+      min-width: 40px;
+    }
+    .warn-desc { font-size: 0.8rem; color: #64748b; flex: 1; }
+    .warn-choices { display: flex; gap: 8px; flex-wrap: wrap; }
+    .choice-btn {
+      background: #1e2040;
+      border: 1px solid #2d3148;
+      color: #94a3b8;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .choice-btn:hover   { border-color: #3b82f6; color: #e2e8f0; }
+    .choice-btn.selected { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+
+    .skip-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: #451a03;
+      color: #fb923c;
+      text-transform: uppercase;
+    }
+    .snap-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: #1a2a14;
+      color: #84cc16;
+      text-transform: uppercase;
+    }
+
+    /* ── Note table ── */
+    .note-table-wrap {
+      max-height: 260px;
+      overflow-y: auto;
+      border-radius: 8px;
+      border: 1px solid #1e2040;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th {
+      background: #13132a;
+      color: #475569;
+      font-size: 0.65rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+    }
+    td {
+      padding: 7px 12px;
+      border-top: 1px solid #1e2040;
+      color: #94a3b8;
+    }
+    tr:hover td { background: #0f0f28; }
+    .td-beat   { color: #f1f5f9; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .td-note   { color: #60a5fa; font-weight: 600; }
+    .td-hole   { color: #4ade80; font-weight: 700; }
+    .td-action-blow { color: #f59e0b; }
+    .td-action-draw { color: #38bdf8; }
+    .td-warn { color: #fb923c; font-size: 0.7rem; }
+
+    /* ── Buttons ── */
+    .btn-row { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-primary {
+      background: #1d4ed8;
+      color: #fff;
+      border: none;
+      padding: 11px 28px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary {
+      background: #13132a;
+      color: #94a3b8;
+      border: 1px solid #2d3148;
+      padding: 11px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-secondary:hover { color: #e2e8f0; border-color: #475569; }
+
+    /* ── Output ── */
+    #output-section { display: none; }
+    .output-tabs { display: flex; gap: 4px; }
+    .output-tab {
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #64748b;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .output-tab.active { background: #1e2040; color: #f1f5f9; border-color: #2d3148; }
+    pre {
+      background: #060610;
+      border: 1px solid #1e2040;
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .alert {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .alert-warn { background: #451a03; border: 1px solid #92400e; color: #fbbf24; }
+    .alert-info { background: #0c1a2e; border: 1px solid #1e3a5f; color: #60a5fa; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">Free Play</a>
+  <a href="hero.html">Hero Mode</a>
+  <a href="midi-import.html" class="active">MIDI Import</a>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1>MIDI → Tab Converter</h1>
+    <p>Drop a MIDI file to map it to C diatonic harmonica holes and export a tab JSON.</p>
+  </div>
+
+  <!-- Drop zone -->
+  <div id="drop-zone">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77A5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+    </svg>
+    <div class="drop-label">Drop .mid / .midi file here</div>
+    <div class="drop-sub">or click to browse</div>
+    <input type="file" id="fileInput" accept=".mid,.midi">
+  </div>
+
+  <!-- Review panel (hidden until file loaded) -->
+  <div id="review-panel" style="display:none">
+
+    <!-- Stats -->
+    <div class="section" id="stats-section">
+      <h2>File Summary</h2>
+      <div class="stats-row" id="stats-row"></div>
+      <div id="tempo-warn" style="display:none"></div>
+    </div>
+
+    <!-- Song metadata -->
+    <div class="section">
+      <h2>Song Info</h2>
+      <div class="field-grid">
+        <div class="field">
+          <label>Title</label>
+          <input type="text" id="f-title" placeholder="Song title">
+        </div>
+        <div class="field">
+          <label>Artist</label>
+          <input type="text" id="f-artist" placeholder="Composer / artist">
+        </div>
+        <div class="field">
+          <label>BPM</label>
+          <input type="number" id="f-bpm" min="40" max="240" step="1">
+        </div>
+        <div class="field">
+          <label>Time Signature</label>
+          <select id="f-timesig">
+            <option value="4/4">4/4</option>
+            <option value="3/4">3/4</option>
+            <option value="6/8">6/8</option>
+            <option value="2/4">2/4</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Difficulty</label>
+          <select id="f-difficulty">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate" selected>Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Description</label>
+          <input type="text" id="f-desc" placeholder="Short description (optional)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Ambiguous notes -->
+    <div class="section" id="ambiguity-section" style="display:none">
+      <h2>Ambiguous Notes — choose hole for each</h2>
+      <div class="alert alert-warn">
+        ⚠ G4 (MIDI 67) exists as both hole 2 draw and hole 3 blow. Choose which to use each time it appears.
+      </div>
+      <div id="ambiguity-list"></div>
+    </div>
+
+    <!-- Chromatic / out-of-range notes -->
+    <div class="section" id="chromatic-section" style="display:none">
+      <h2>Out-of-Scale Notes</h2>
+      <div class="alert alert-info">
+        ℹ These pitches are not on a C diatonic harmonica. Each has been snapped to the nearest available note — adjust or skip as needed.
+      </div>
+      <div id="chromatic-list"></div>
+    </div>
+
+    <!-- Note preview table -->
+    <div class="section">
+      <h2>Note Preview</h2>
+      <div class="note-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Beat</th>
+              <th>Duration</th>
+              <th>MIDI Note</th>
+              <th>Hole</th>
+              <th>Action</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="note-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="btn-row">
+      <button class="btn-secondary" id="resetBtn">← Load Another File</button>
+      <button class="btn-primary" id="exportBtn">Export JSON</button>
+    </div>
+  </div>
+
+  <!-- Output -->
+  <div class="section" id="output-section">
+    <h2>Export</h2>
+    <div class="output-tabs">
+      <div class="output-tab active" data-tab="tab-json">Tab JSON (save to resources/tabs/)</div>
+      <div class="output-tab" data-tab="tab-bundle">Bundle snippet (paste into songs-bundle.js)</div>
+    </div>
+    <pre id="out-tab-json"></pre>
+    <pre id="out-tab-bundle" style="display:none"></pre>
+    <div class="btn-row">
+      <button class="btn-secondary" id="copyBtn">Copy to Clipboard</button>
+      <button class="btn-primary" id="downloadBtn">Download JSON</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// C diatonic harmonica — MIDI note → hole/action mapping
+// ─────────────────────────────────────────────────────────────
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function midiName(n) {
+  return NOTE_NAMES[n % 12] + (Math.floor(n / 12) - 1);
+}
+
+// Notes available on C diatonic (MIDI number → possible mappings)
+const HARP_MAP = new Map([
+  [60, [{hole:1,  action:'blow'}]],           // C4
+  [62, [{hole:1,  action:'draw'}]],           // D4
+  [64, [{hole:2,  action:'blow'}]],           // E4
+  [67, [{hole:2,  action:'draw'}, {hole:3, action:'blow'}]], // G4 — ambiguous
+  [71, [{hole:3,  action:'draw'}]],           // B4
+  [72, [{hole:4,  action:'blow'}]],           // C5
+  [74, [{hole:4,  action:'draw'}]],           // D5
+  [76, [{hole:5,  action:'blow'}]],           // E5
+  [77, [{hole:5,  action:'draw'}]],           // F5
+  [79, [{hole:6,  action:'blow'}]],           // G5
+  [81, [{hole:6,  action:'draw'}]],           // A5
+  [83, [{hole:7,  action:'draw'}]],           // B5
+  [84, [{hole:7,  action:'blow'}]],           // C6
+  [86, [{hole:8,  action:'draw'}]],           // D6
+  [88, [{hole:8,  action:'blow'}]],           // E6
+  [89, [{hole:9,  action:'draw'}]],           // F6
+  [91, [{hole:9,  action:'blow'}]],           // G6
+  [93, [{hole:10, action:'draw'}]],           // A6
+  [96, [{hole:10, action:'blow'}]],           // C7
+]);
+
+const HARP_MIDI_NOTES = [...HARP_MAP.keys()].sort((a,b) => a - b);
+const HARP_MIN = HARP_MIDI_NOTES[0];   // 60
+const HARP_MAX = HARP_MIDI_NOTES[HARP_MIDI_NOTES.length - 1]; // 96
+
+function nearestHarpNote(midi) {
+  return HARP_MIDI_NOTES.reduce((best, n) =>
+    Math.abs(n - midi) < Math.abs(best - midi) ? n : best
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// MIDI binary parser
+// ─────────────────────────────────────────────────────────────
+function u32(b, i) { return ((b[i]<<24)|(b[i+1]<<16)|(b[i+2]<<8)|b[i+3]) >>> 0; }
+function u16(b, i) { return (b[i]<<8)|b[i+1]; }
+
+function vlq(b, i) {
+  let v = 0, r = 0, byte;
+  do { byte = b[i + r++]; v = (v << 7) | (byte & 0x7F); } while (byte & 0x80);
+  return { v, r };
+}
+
+function parseTrack(b, start, len) {
+  const events = [], end = start + len;
+  let pos = start, tick = 0, running = 0;
+
+  while (pos < end) {
+    const dt = vlq(b, pos); pos += dt.r; tick += dt.v;
+    let st = b[pos];
+
+    if (st === 0xFF) {
+      // Meta event
+      pos++;
+      const mt = b[pos++];
+      const ml = vlq(b, pos); pos += ml.r;
+      if (mt === 0x51 && ml.v === 3) {
+        events.push({ kind:'tempo', tick, µs: (b[pos]<<16)|(b[pos+1]<<8)|b[pos+2] });
+      } else if (mt === 0x03) {
+        let name = '';
+        for (let i = 0; i < ml.v; i++) name += String.fromCharCode(b[pos+i]);
+        events.push({ kind:'name', tick, name });
+      } else if (mt === 0x2F) {
+        events.push({ kind:'end', tick });
+      }
+      pos += ml.v;
+
+    } else if (st === 0xF0 || st === 0xF7) {
+      // SysEx — skip
+      pos++;
+      const sl = vlq(b, pos); pos += sl.r + sl.v;
+
+    } else {
+      // Channel event
+      if (st & 0x80) { running = st; pos++; }
+      else           { st = running; }
+
+      const type = st & 0xF0;
+      if (type === 0x90) {
+        const note = b[pos++], vel = b[pos++];
+        events.push({ kind: vel ? 'on' : 'off', tick, note, vel });
+      } else if (type === 0x80) {
+        events.push({ kind:'off', tick, note: b[pos++], vel: b[pos++] });
+      } else if (type === 0xA0 || type === 0xB0 || type === 0xE0) { pos += 2; }
+      else if (type === 0xC0 || type === 0xD0)                    { pos += 1; }
+      else { break; } // unknown — bail
+    }
+  }
+  return events;
+}
+
+function parseMidi(buf) {
+  const b = new Uint8Array(buf);
+  const tag = String.fromCharCode(b[0],b[1],b[2],b[3]);
+  if (tag !== 'MThd') throw new Error('Not a MIDI file (missing MThd header)');
+
+  const hLen = u32(b, 4);
+  const format   = u16(b, 8);
+  const nTracks  = u16(b, 10);
+  const division = u16(b, 12);
+  if (division & 0x8000) throw new Error('SMPTE time-code MIDI not supported');
+
+  let pos = 8 + hLen;
+  const tracks = [];
+  for (let t = 0; t < nTracks; t++) {
+    const tTag = String.fromCharCode(b[pos],b[pos+1],b[pos+2],b[pos+3]);
+    if (tTag !== 'MTrk') throw new Error(`Expected MTrk at byte ${pos}`);
+    const tLen = u32(b, pos + 4);
+    pos += 8;
+    tracks.push(parseTrack(b, pos, tLen));
+    pos += tLen;
+  }
+  return { format, nTracks, division, tracks };
+}
+
+function extractNotes(midi) {
+  const { division, tracks } = midi;
+
+  // Collect tempo events (default 120 BPM = 500 000 µs/beat)
+  const tempos = [{ tick:0, µs:500000 }];
+  for (const track of tracks) {
+    for (const e of track) {
+      if (e.kind === 'tempo') tempos.push({ tick: e.tick, µs: e.µs });
+    }
+  }
+  tempos.sort((a,b) => a.tick - b.tick);
+  // Deduplicate tick-0 entries (keep last)
+  if (tempos.length > 1 && tempos[1].tick === 0) tempos.shift();
+
+  const bpm = Math.round(60_000_000 / tempos[0].µs);
+
+  // Collect track names
+  let trackName = '';
+  for (const track of tracks) {
+    for (const e of track) { if (e.kind === 'name' && e.name) { trackName = e.name; break; } }
+    if (trackName) break;
+  }
+
+  // Build note-on/off pairs across all tracks
+  // Key: `ch-note` → { tick, vel }
+  const active = new Map();
+  const rawNotes = [];
+
+  // Merge all events and sort by tick
+  const allEvents = tracks.flat().filter(e => e.kind === 'on' || e.kind === 'off');
+  allEvents.sort((a,b) => a.tick !== b.tick ? a.tick - b.tick : (a.kind === 'off' ? -1 : 1));
+
+  for (const e of allEvents) {
+    const key = e.note; // treat all channels as one melody
+    if (e.kind === 'on') {
+      if (!active.has(key)) active.set(key, { tick: e.tick, vel: e.vel });
+    } else {
+      const on = active.get(key);
+      if (on !== undefined) {
+        active.delete(key);
+        const startBeat  = on.tick / division;
+        const durBeats   = (e.tick - on.tick) / division;
+        rawNotes.push({
+          midi:     e.note,
+          beat:     Math.round(startBeat * 8) / 8,   // quantise to ⅛ beat
+          duration: Math.max(0.25, Math.round(durBeats * 8) / 8),
+        });
+      }
+    }
+  }
+
+  // Close any notes still active at end (no note-off)
+  for (const [note, on] of active) {
+    const startBeat = on.tick / division;
+    rawNotes.push({ midi: note, beat: Math.round(startBeat*8)/8, duration: 1.0 });
+  }
+
+  rawNotes.sort((a,b) => a.beat - b.beat);
+
+  return { bpm, trackName, hasTempoChanges: tempos.length > 1, rawNotes };
+}
+
+// ─────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────
+let state = {
+  bpm: 120,
+  rawNotes:     [],   // { midi, beat, duration }
+  // per-occurrence choices for ambiguous notes:
+  ambigChoices: {},   // `${noteIndex}` → mapping index (0 or 1)
+  // per-MIDI-number choice for chromatic/out-of-range:
+  snapChoices:  {},   // midiNum → { skip:bool, snappedTo:number }
+};
+
+// ─────────────────────────────────────────────────────────────
+// UI helpers
+// ─────────────────────────────────────────────────────────────
+function resolveNote(idx) {
+  const { midi } = state.rawNotes[idx];
+  const mappings = HARP_MAP.get(midi);
+  if (mappings) {
+    // Exact hit — may be ambiguous
+    if (mappings.length === 1) return { ...mappings[0], status: 'ok' };
+    const choice = state.ambigChoices[idx] ?? 0;
+    return { ...mappings[choice], status: 'ambig' };
+  }
+  // Not on harp — use snap choice
+  const snap = state.snapChoices[midi];
+  if (snap?.skip) return null;
+  const snappedTo = snap?.snappedTo ?? nearestHarpNote(midi);
+  const snappedMappings = HARP_MAP.get(snappedTo);
+  if (!snappedMappings) return null;
+  return { ...snappedMappings[0], snappedFrom: midi, snappedTo, status: 'snap' };
+}
+
+function buildFinalNotes() {
+  return state.rawNotes.map((raw, i) => {
+    const resolved = resolveNote(i);
+    if (!resolved) return null;
+    return {
+      beat:     raw.beat,
+      hole:     resolved.hole,
+      action:   resolved.action,
+      duration: raw.duration,
+    };
+  }).filter(Boolean);
+}
+
+function refreshTable() {
+  const tbody = document.getElementById('note-tbody');
+  tbody.innerHTML = state.rawNotes.map((raw, i) => {
+    const resolved = resolveNote(i);
+    if (!resolved) return `
+      <tr>
+        <td>${i+1}</td>
+        <td class="td-beat">${raw.beat}</td>
+        <td>${raw.duration}</td>
+        <td class="td-note">${midiName(raw.midi)} <small style="color:#334155">(${raw.midi})</small></td>
+        <td colspan="2" style="color:#334155;font-style:italic">skipped</td>
+        <td><span class="skip-badge">skip</span></td>
+      </tr>`;
+    const statusBadge =
+      resolved.status === 'snap'  ? `<span class="snap-badge">snapped</span>` :
+      resolved.status === 'ambig' ? `<span class="skip-badge" style="background:#1a1a40;color:#818cf8">ambig</span>` : '';
+    return `
+      <tr>
+        <td>${i+1}</td>
+        <td class="td-beat">${raw.beat}</td>
+        <td>${raw.duration}</td>
+        <td class="td-note">${midiName(raw.midi)} <small style="color:#334155">(${raw.midi})</small></td>
+        <td class="td-hole">${resolved.hole}</td>
+        <td class="td-action-${resolved.action}">${resolved.action}</td>
+        <td>${statusBadge}</td>
+      </tr>`;
+  }).join('');
+}
+
+function buildOutput() {
+  const title  = document.getElementById('f-title').value.trim() || 'Untitled';
+  const artist = document.getElementById('f-artist').value.trim() || 'Unknown';
+  const bpm    = parseInt(document.getElementById('f-bpm').value) || state.bpm;
+  const timeSig   = document.getElementById('f-timesig').value;
+  const difficulty = document.getElementById('f-difficulty').value;
+  const desc   = document.getElementById('f-desc').value.trim();
+
+  const notes = buildFinalNotes();
+  const holes = notes.map(n => n.hole);
+  const holeRange = [Math.min(...holes), Math.max(...holes)];
+  const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+  const songObj = {
+    id, title, artist, bpm,
+    timeSignature: timeSig,
+    key: 'C',
+    difficulty,
+    holeRange,
+    ...(desc ? { description: desc } : {}),
+    notes,
+  };
+
+  const tabJson = JSON.stringify(songObj, null, 2);
+
+  // Bundle snippet
+  const manifestEntry = JSON.stringify({
+    id, title, artist, difficulty, bpm, timeSignature: timeSig,
+    holeRange, description: desc || '',
+    file: `resources/tabs/${id}.json`,
+  }, null, 2);
+
+  // Convert notes array to JS (same indentation style as songs-bundle.js)
+  const noteLines = notes.map(n =>
+    `      { beat: ${n.beat}, hole: ${n.hole}, action: "${n.action}", duration: ${n.duration} }`
+  ).join(',\n');
+
+  const bundleSnippet =
+`// 1. Add to SONGS_MANIFEST array in songs-bundle.js:
+${manifestEntry},
+
+// 2. Add to SONGS_DATA object in songs-bundle.js:
+"${id}": {
+  id: "${id}",
+  title: "${title}",
+  artist: "${artist}",
+  bpm: ${bpm},
+  timeSignature: "${timeSig}",
+  key: "C",
+  difficulty: "${difficulty}",
+  holeRange: ${JSON.stringify(holeRange)},${desc ? `\n  description: "${desc}",` : ''}
+  notes: [
+${noteLines}
+  ]
+},`;
+
+  return { tabJson, bundleSnippet, id };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Render review panel from parsed data
+// ─────────────────────────────────────────────────────────────
+function renderReview({ bpm, trackName, hasTempoChanges, rawNotes }) {
+  state.bpm = bpm;
+  state.rawNotes = rawNotes;
+  state.ambigChoices = {};
+  state.snapChoices  = {};
+
+  // Pre-fill snap choices for all out-of-scale notes
+  for (const { midi } of rawNotes) {
+    if (!HARP_MAP.has(midi) && !state.snapChoices[midi]) {
+      state.snapChoices[midi] = { skip: false, snappedTo: nearestHarpNote(midi) };
+    }
+  }
+
+  // Stats
+  document.getElementById('stats-row').innerHTML = `
+    <div class="stat-chip"><div class="val">${rawNotes.length}</div><div class="lbl">Notes</div></div>
+    <div class="stat-chip"><div class="val">${bpm}</div><div class="lbl">BPM</div></div>
+    <div class="stat-chip"><div class="val">${(rawNotes.at(-1)?.beat ?? 0).toFixed(1)}</div><div class="lbl">End Beat</div></div>
+  `;
+
+  const tempoWarn = document.getElementById('tempo-warn');
+  if (hasTempoChanges) {
+    tempoWarn.style.display = '';
+    tempoWarn.innerHTML = `<div class="alert alert-warn">⚠ This MIDI has tempo changes — only the initial BPM (${bpm}) is used. The exported tab will have fixed tempo.</div>`;
+  }
+
+  // Pre-fill form
+  document.getElementById('f-title').value  = trackName || '';
+  document.getElementById('f-bpm').value    = bpm;
+
+  // Ambiguous notes (G4 = MIDI 67)
+  const ambigIndices = rawNotes
+    .map((n, i) => ({ ...n, i }))
+    .filter(n => (HARP_MAP.get(n.midi)?.length ?? 0) > 1);
+
+  const ambigSection = document.getElementById('ambiguity-section');
+  if (ambigIndices.length) {
+    ambigSection.style.display = '';
+    document.getElementById('ambiguity-list').innerHTML = ambigIndices.map(({ midi, beat, i }) => {
+      const opts = HARP_MAP.get(midi);
+      return `
+        <div class="warn-item">
+          <div class="warn-note">${midiName(midi)}</div>
+          <div class="warn-desc">beat ${beat}</div>
+          <div class="warn-choices">
+            ${opts.map((o, oi) => `
+              <button class="choice-btn ${oi===0?'selected':''}"
+                data-idx="${i}" data-choice="${oi}"
+                onclick="pickAmbig(${i},${oi})">
+                Hole ${o.hole} ${o.action}
+              </button>`).join('')}
+          </div>
+        </div>`;
+    }).join('');
+  } else {
+    ambigSection.style.display = 'none';
+  }
+
+  // Chromatic / out-of-range
+  const outOfScale = [...new Set(
+    rawNotes.map(n => n.midi).filter(m => !HARP_MAP.has(m))
+  )].sort((a,b) => a-b);
+
+  const chromSection = document.getElementById('chromatic-section');
+  if (outOfScale.length) {
+    chromSection.style.display = '';
+    document.getElementById('chromatic-list').innerHTML = outOfScale.map(midi => {
+      const snap = state.snapChoices[midi];
+      const nearest = snap.snappedTo;
+      const nearestMappings = HARP_MAP.get(nearest);
+      const outOfRange = midi < HARP_MIN || midi > HARP_MAX;
+      return `
+        <div class="warn-item" id="chromatic-${midi}">
+          <div class="warn-note">${midiName(midi)}</div>
+          <div class="warn-desc">${outOfRange ? 'Outside harmonica range' : 'Not on C diatonic'}</div>
+          <div class="warn-choices">
+            <button class="choice-btn ${snap.skip?'':'selected'}"
+              onclick="pickSnap(${midi}, false, ${nearest})">
+              → Hole ${nearestMappings[0].hole} ${nearestMappings[0].action} (${midiName(nearest)})
+            </button>
+            <button class="choice-btn ${snap.skip?'selected':''}"
+              onclick="pickSnap(${midi}, true, ${nearest})">
+              Skip
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+  } else {
+    chromSection.style.display = 'none';
+  }
+
+  refreshTable();
+  document.getElementById('review-panel').style.display = '';
+  document.getElementById('output-section').style.display = 'none';
+}
+
+// ─────────────────────────────────────────────────────────────
+// Interaction handlers
+// ─────────────────────────────────────────────────────────────
+window.pickAmbig = function(idx, choice) {
+  state.ambigChoices[idx] = choice;
+  // Update button states in the ambiguity section
+  document.querySelectorAll(`[data-idx="${idx}"]`).forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.dataset.choice) === choice);
+  });
+  refreshTable();
+};
+
+window.pickSnap = function(midi, skip, snappedTo) {
+  state.snapChoices[midi] = { skip, snappedTo };
+  const wrap = document.getElementById(`chromatic-${midi}`);
+  wrap.querySelectorAll('.choice-btn').forEach((btn, i) => {
+    btn.classList.toggle('selected', skip ? i === 1 : i === 0);
+  });
+  refreshTable();
+};
+
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const { tabJson, bundleSnippet, id } = buildOutput();
+  document.getElementById('out-tab-json').textContent    = tabJson;
+  document.getElementById('out-tab-bundle').textContent  = bundleSnippet;
+  document.getElementById('output-section').style.display = '';
+  document.getElementById('output-section').scrollIntoView({ behavior:'smooth' });
+  document.getElementById('output-section')._tabJson    = tabJson;
+  document.getElementById('output-section')._bundleSnippet = bundleSnippet;
+  document.getElementById('output-section')._id         = id;
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  document.getElementById('review-panel').style.display  = 'none';
+  document.getElementById('output-section').style.display = 'none';
+  document.getElementById('drop-zone').style.display      = '';
+});
+
+// Output tabs
+document.querySelectorAll('.output-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.output-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const show = tab.dataset.tab;
+    document.getElementById('out-tab-json').style.display    = show === 'tab-json'    ? '' : 'none';
+    document.getElementById('out-tab-bundle').style.display  = show === 'tab-bundle'  ? '' : 'none';
+  });
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const activeTab = document.querySelector('.output-tab.active').dataset.tab;
+  const text = activeTab === 'tab-json'
+    ? document.getElementById('out-tab-json').textContent
+    : document.getElementById('out-tab-bundle').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy to Clipboard', 1500);
+  });
+});
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const sec  = document.getElementById('output-section');
+  const id   = sec._id || 'song';
+  const json = sec._tabJson || '';
+  const blob = new Blob([json], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `${id}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// ─────────────────────────────────────────────────────────────
+// File input / drag-drop
+// ─────────────────────────────────────────────────────────────
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const midi   = parseMidi(e.target.result);
+      const result = extractNotes(midi);
+      if (!result.rawNotes.length) throw new Error('No notes found in MIDI file');
+      document.getElementById('drop-zone').style.display = 'none';
+      renderReview(result);
+    } catch (err) {
+      alert(`Parse error: ${err.message}`);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('drag-over');
+  handleFile(e.dataTransfer.files[0]);
+});
+</script>
+</body>
+</html>

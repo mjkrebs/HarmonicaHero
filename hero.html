@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HarmonicaHero — Hero Mode</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f1a;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Nav ── */
+    nav {
+      width: 100%;
+      background: #13132a;
+      border-bottom: 1px solid #1e2040;
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      padding: 10px 16px;
+    }
+
+    nav a {
+      color: #64748b;
+      text-decoration: none;
+      padding: 7px 20px;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      transition: all 0.15s;
+    }
+
+    nav a:hover   { color: #e2e8f0; background: #1e2040; }
+    nav a.active  { color: #fff; background: #1d4ed8; }
+
+    /* ── Layout ── */
+    .page {
+      display: flex;
+      gap: 24px;
+      padding: 24px 16px;
+      align-items: flex-start;
+      width: 100%;
+      max-width: 820px;
+      justify-content: center;
+    }
+
+    /* ── Highway ── */
+    .highway-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #highway {
+      border-radius: 12px;
+      border: 1px solid #1e2040;
+      display: block;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 200px;
+    }
+
+    .panel {
+      background: #13132a;
+      border: 1px solid #1e2040;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .panel h3 {
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 12px;
+    }
+
+    .score-val {
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: #f8fafc;
+      line-height: 1;
+    }
+
+    .combo-val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #facc15;
+      margin-top: 10px;
+    }
+
+    .combo-label {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    .accuracy-val {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #4ade80;
+      margin-top: 10px;
+    }
+
+    /* ── Detected note ── */
+    .det-note {
+      font-size: 3rem;
+      font-weight: 800;
+      color: #334155;
+      line-height: 1;
+      transition: color 0.1s;
+      text-align: center;
+    }
+    .det-note.active { color: #f8fafc; }
+    .det-oct { font-size: 1.2rem; color: #64748b; }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    select, .bpm-row input[type=range] {
+      background: #0f0f1a;
+      border: 1px solid #2d3148;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      width: 100%;
+    }
+
+    .bpm-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .bpm-row label {
+      font-size: 0.75rem;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    #startBtn {
+      background: #1d4ed8;
+      color: #fff;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background 0.2s;
+      width: 100%;
+    }
+    #startBtn:hover { background: #2563eb; }
+    #startBtn.stop  { background: #991b1b; }
+    #startBtn.stop:hover { background: #b91c1c; }
+
+    /* ── Results overlay ── */
+    #results {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #0f0f1aee;
+      z-index: 10;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+    }
+    #results.show { display: flex; }
+
+    #results .grade {
+      font-size: 6rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+    #results .grade.S { color: #facc15; }
+    #results .grade.A { color: #4ade80; }
+    #results .grade.B { color: #60a5fa; }
+    #results .grade.C { color: #fb923c; }
+    #results .grade.F { color: #f87171; }
+
+    #results h2  { font-size: 1.6rem; color: #f8fafc; }
+    #results p   { font-size: 1rem;   color: #94a3b8; }
+
+    #results button {
+      margin-top: 8px;
+      background: #1d4ed8;
+      color: #fff;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #results button:hover { background: #2563eb; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">Free Play</a>
+  <a href="hero.html" class="active">Hero Mode</a>
+</nav>
+
+<div class="page">
+  <div class="highway-wrap">
+    <canvas id="highway" width="280" height="520"></canvas>
+  </div>
+
+  <div class="sidebar">
+    <div class="panel">
+      <h3>Score</h3>
+      <div class="score-val" id="scoreVal">0</div>
+      <div class="combo-val" id="comboVal">×1</div>
+      <div class="combo-label">COMBO</div>
+      <div class="accuracy-val" id="accVal">--%</div>
+      <div class="combo-label">ACCURACY</div>
+    </div>
+
+    <div class="panel" style="text-align:center;">
+      <h3>Hearing</h3>
+      <span class="det-note" id="detNote">--</span><span class="det-oct" id="detOct"></span>
+    </div>
+
+    <div class="panel controls">
+      <h3>Song</h3>
+      <select id="songSelect">
+        <option value="mary">Mary Had a Little Lamb</option>
+        <option value="twinkle">Twinkle Twinkle</option>
+        <option value="saints">Oh When the Saints</option>
+      </select>
+      <div class="bpm-row">
+        <label>BPM <span id="bpmLabel">90</span></label>
+        <input type="range" id="bpmRange" min="50" max="160" value="90">
+      </div>
+      <button id="startBtn">START</button>
+    </div>
+  </div>
+</div>
+
+<div id="results">
+  <div class="grade" id="resGrade">S</div>
+  <h2 id="resTitle">Amazing!</h2>
+  <p id="resStats"></p>
+  <button id="retryBtn">Play Again</button>
+</div>
+
+<script>
+// ── Song data ──────────────────────────────────────────────────────────────
+// Each note: { beat, hole, action }
+// beat 0 = first note, fractional beats ok
+
+const SONGS = {
+  mary: {
+    name: 'Mary Had a Little Lamb',
+    bpm: 90,
+    notes: [
+      {beat:0, hole:5, action:'blow'}, {beat:1, hole:4, action:'draw'},
+      {beat:2, hole:4, action:'blow'}, {beat:3, hole:4, action:'draw'},
+      {beat:4, hole:5, action:'blow'}, {beat:5, hole:5, action:'blow'},
+      {beat:6, hole:5, action:'blow'},
+      {beat:8,  hole:4, action:'draw'}, {beat:9,  hole:4, action:'draw'},
+      {beat:10, hole:4, action:'draw'},
+      {beat:12, hole:5, action:'blow'}, {beat:13, hole:6, action:'blow'},
+      {beat:14, hole:6, action:'blow'},
+      {beat:16, hole:5, action:'blow'}, {beat:17, hole:4, action:'draw'},
+      {beat:18, hole:4, action:'blow'}, {beat:19, hole:4, action:'draw'},
+      {beat:20, hole:5, action:'blow'}, {beat:21, hole:5, action:'blow'},
+      {beat:22, hole:5, action:'blow'}, {beat:23, hole:5, action:'blow'},
+      {beat:24, hole:4, action:'draw'}, {beat:25, hole:4, action:'draw'},
+      {beat:26, hole:5, action:'blow'}, {beat:27, hole:4, action:'draw'},
+      {beat:28, hole:4, action:'blow'},
+    ]
+  },
+  twinkle: {
+    name: 'Twinkle Twinkle',
+    bpm: 100,
+    notes: [
+      {beat:0,  hole:4, action:'blow'}, {beat:1,  hole:4, action:'blow'},
+      {beat:2,  hole:6, action:'blow'}, {beat:3,  hole:6, action:'blow'},
+      {beat:4,  hole:6, action:'draw'}, {beat:5,  hole:6, action:'draw'},
+      {beat:6,  hole:6, action:'blow'},
+      {beat:8,  hole:5, action:'draw'}, {beat:9,  hole:5, action:'draw'},
+      {beat:10, hole:5, action:'blow'}, {beat:11, hole:5, action:'blow'},
+      {beat:12, hole:4, action:'draw'}, {beat:13, hole:4, action:'draw'},
+      {beat:14, hole:4, action:'blow'},
+      {beat:16, hole:6, action:'blow'}, {beat:17, hole:6, action:'blow'},
+      {beat:18, hole:5, action:'draw'}, {beat:19, hole:5, action:'draw'},
+      {beat:20, hole:5, action:'blow'}, {beat:21, hole:5, action:'blow'},
+      {beat:22, hole:4, action:'draw'},
+      {beat:24, hole:6, action:'blow'}, {beat:25, hole:6, action:'blow'},
+      {beat:26, hole:5, action:'draw'}, {beat:27, hole:5, action:'draw'},
+      {beat:28, hole:5, action:'blow'}, {beat:29, hole:5, action:'blow'},
+      {beat:30, hole:4, action:'draw'},
+      {beat:32, hole:4, action:'blow'}, {beat:33, hole:4, action:'blow'},
+      {beat:34, hole:6, action:'blow'}, {beat:35, hole:6, action:'blow'},
+      {beat:36, hole:6, action:'draw'}, {beat:37, hole:6, action:'draw'},
+      {beat:38, hole:6, action:'blow'},
+      {beat:40, hole:5, action:'draw'}, {beat:41, hole:5, action:'draw'},
+      {beat:42, hole:5, action:'blow'}, {beat:43, hole:5, action:'blow'},
+      {beat:44, hole:4, action:'draw'}, {beat:45, hole:4, action:'draw'},
+      {beat:46, hole:4, action:'blow'},
+    ]
+  },
+  saints: {
+    name: 'Oh When the Saints',
+    bpm: 100,
+    notes: [
+      // Oh when the saints
+      {beat:1, hole:4, action:'blow'}, {beat:2, hole:5, action:'blow'},
+      {beat:3, hole:5, action:'draw'}, {beat:5, hole:6, action:'blow'},
+      // Oh when the saints go marching in
+      {beat:7, hole:4, action:'blow'}, {beat:8, hole:5, action:'blow'},
+      {beat:9, hole:5, action:'draw'}, {beat:11, hole:6, action:'blow'},
+      // Oh when the saints go marching in
+      {beat:13, hole:4, action:'blow'}, {beat:14, hole:5, action:'blow'},
+      {beat:15, hole:5, action:'draw'}, {beat:17, hole:6, action:'blow'},
+      {beat:18, hole:5, action:'draw'}, {beat:19, hole:5, action:'blow'},
+      {beat:21, hole:4, action:'draw'},
+      // I want to be in that number
+      {beat:23, hole:5, action:'draw'}, {beat:24, hole:6, action:'blow'},
+      {beat:25, hole:4, action:'blow'}, {beat:26, hole:5, action:'blow'},
+      {beat:27, hole:5, action:'draw'},
+      // When the saints go marching in
+      {beat:29, hole:6, action:'blow'}, {beat:30, hole:5, action:'draw'},
+      {beat:31, hole:5, action:'blow'}, {beat:33, hole:4, action:'draw'},
+      {beat:35, hole:4, action:'blow'},
+    ]
+  }
+};
+
+// ── Harmonica reference (for note name lookup) ──
+const HARMONICA = [
+  { hole:1,  blow:['C',4], draw:['D',4] },
+  { hole:2,  blow:['E',4], draw:['G',4] },
+  { hole:3,  blow:['G',4], draw:['B',4] },
+  { hole:4,  blow:['C',5], draw:['D',5] },
+  { hole:5,  blow:['E',5], draw:['F',5] },
+  { hole:6,  blow:['G',5], draw:['A',5] },
+  { hole:7,  blow:['C',6], draw:['B',5] },
+  { hole:8,  blow:['E',6], draw:['D',6] },
+  { hole:9,  blow:['G',6], draw:['F',6] },
+  { hole:10, blow:['C',7], draw:['A',6] },
+];
+
+function holeNote(hole, action) {
+  const h = HARMONICA[hole - 1];
+  return h[action]; // [name, octave]
+}
+
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function freqToNoteInfo(freq) {
+  const noteNum = 12 * Math.log2(freq / 440) + 69;
+  const rounded = Math.round(noteNum);
+  const cents   = Math.round((noteNum - rounded) * 100);
+  const name    = NOTE_NAMES[((rounded % 12) + 12) % 12];
+  const octave  = Math.floor(rounded / 12) - 1;
+  return { name, octave, cents };
+}
+
+// ── Pitch detection (same autocorrelation as free play) ──
+function autoCorrelate(buf, sampleRate) {
+  const SIZE = buf.length;
+  let rms = 0;
+  for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+  rms = Math.sqrt(rms / SIZE);
+  if (rms < 0.01) return -1;
+
+  const minLag = Math.floor(sampleRate / 2300);
+  const maxLag = Math.ceil(sampleRate / 190);
+  const c = new Float32Array(maxLag + 1);
+  for (let lag = minLag; lag <= maxLag; lag++) {
+    let sum = 0, n = SIZE - lag;
+    for (let i = 0; i < n; i++) sum += buf[i] * buf[i + lag];
+    c[lag] = sum / n;
+  }
+
+  let c0 = 0;
+  for (let i = 0; i < SIZE; i++) c0 += buf[i] * buf[i];
+  c0 /= SIZE;
+
+  let globalMax = 0;
+  for (let i = minLag; i <= maxLag; i++) if (c[i] > globalMax) globalMax = c[i];
+  if (globalMax / c0 < 0.15) return -1;
+
+  const threshold = 0.80 * globalMax;
+  const WIN = 2;
+  let bestPos = -1;
+  for (let i = minLag + WIN; i <= maxLag - WIN; i++) {
+    if (c[i] < threshold) continue;
+    let peak = true;
+    for (let j = 1; j <= WIN; j++) {
+      if (c[i-j] > c[i] || c[i+j] > c[i]) { peak = false; break; }
+    }
+    if (peak) { bestPos = i; break; }
+  }
+  if (bestPos < 0) return -1;
+
+  let T = bestPos;
+  if (bestPos > minLag && bestPos < maxLag) {
+    const x1 = c[bestPos-1], x2 = c[bestPos], x3 = c[bestPos+1];
+    const a = (x1 + x3 - 2*x2) / 2, b = (x3 - x1) / 2;
+    if (a < 0) T = bestPos - b / (2*a);
+  }
+  return sampleRate / T;
+}
+
+// ── Canvas constants ──
+const CW = 280, CH = 520;
+const LANE_X = 20, LANE_W = CW - 40;
+const STRIKE_Y = 430;
+const NOTE_H = 50;
+const TRAVEL_MS = 2200;
+const NOTE_SPEED = (STRIKE_Y + NOTE_H) / TRAVEL_MS; // px/ms
+const HIT_WINDOW_MS = 280;
+
+// ── Game state ──
+let state = 'IDLE'; // IDLE | COUNTDOWN | PLAYING | RESULTS
+let audioCtx, analyser, micSource;
+let animId = null;
+let songNotes = [];   // enriched note objects
+let gameStart = 0;    // performance.now() when beat 0 starts
+let beatMs = 0;       // ms per beat
+let score = 0;
+let combo = 0;
+let totalNotes = 0;
+let hitNotes = 0;
+let currentNote = null; // { name, octave } last detected
+let flashEffects = []; // { y, color, alpha, t }
+let countdownVal = 0;
+
+const canvas = document.getElementById('highway');
+const ctx = canvas.getContext('2d');
+
+// ── Build enriched note list from song ──
+function buildNotes(song, bpm) {
+  beatMs = 60000 / bpm;
+  const INTRO_BEATS = 3; // blank beats before first note scrolls in
+  return song.notes.map(n => {
+    const [noteName, noteOctave] = holeNote(n.hole, n.action);
+    return {
+      ...n,
+      noteName, noteOctave,
+      hitTime: (n.beat + INTRO_BEATS) * beatMs,
+      state: 'pending', // pending | hit | miss | active
+    };
+  });
+}
+
+// ── Rendering ──
+function drawHighway(now) {
+  ctx.clearRect(0, 0, CW, CH);
+
+  // Background
+  ctx.fillStyle = '#0a0a14';
+  ctx.fillRect(0, 0, CW, CH);
+
+  // Lane
+  ctx.fillStyle = '#10102a';
+  ctx.fillRect(LANE_X, 0, LANE_W, CH);
+
+  // Subtle grid lines
+  ctx.strokeStyle = '#1a1a38';
+  ctx.lineWidth = 1;
+  for (let y = 0; y < CH; y += 60) {
+    ctx.beginPath();
+    ctx.moveTo(LANE_X, y);
+    ctx.lineTo(LANE_X + LANE_W, y);
+    ctx.stroke();
+  }
+
+  // Flash effects
+  flashEffects = flashEffects.filter(f => {
+    f.alpha -= 0.04;
+    if (f.alpha <= 0) return false;
+    ctx.globalAlpha = f.alpha;
+    ctx.fillStyle = f.color;
+    ctx.fillRect(LANE_X, f.y - NOTE_H/2 - 4, LANE_W, NOTE_H + 8);
+    ctx.globalAlpha = 1;
+    return true;
+  });
+
+  // Notes
+  const elapsed = state === 'PLAYING' || state === 'RESULTS' ? now - gameStart : -1;
+
+  for (const note of songNotes) {
+    if (note.state === 'hit') continue;
+    const noteY = STRIKE_Y - (note.hitTime - elapsed) * NOTE_SPEED;
+    if (noteY < -NOTE_H || noteY > CH + NOTE_H) continue;
+
+    const isBlow = note.action === 'blow';
+    const isActive = Math.abs(elapsed - note.hitTime) < HIT_WINDOW_MS;
+
+    // Note block
+    const x = LANE_X + 4, w = LANE_W - 8, h = NOTE_H - 4;
+    const y = noteY - NOTE_H / 2;
+
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 8);
+
+    if (note.state === 'miss') {
+      ctx.fillStyle = '#1a1020';
+      ctx.strokeStyle = '#4b2040';
+    } else if (isBlow) {
+      ctx.fillStyle = isActive ? '#1e40af' : '#0f2040';
+      ctx.strokeStyle = isActive ? '#93c5fd' : '#1e4080';
+    } else {
+      ctx.fillStyle = isActive ? '#9a3412' : '#2d1004';
+      ctx.strokeStyle = isActive ? '#fdba74' : '#7c2d12';
+    }
+    ctx.lineWidth = isActive ? 2.5 : 1.5;
+    ctx.fill();
+    ctx.stroke();
+
+    if (note.state !== 'miss') {
+      // Hole number
+      ctx.fillStyle = isActive ? '#fff' : (isBlow ? '#93c5fd' : '#fdba74');
+      ctx.font = `bold 20px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(note.hole, x + w / 2 - 20, y + h / 2);
+
+      // Arrow + action
+      ctx.font = `bold 16px system-ui`;
+      ctx.fillText(isBlow ? '↑' : '↓', x + w / 2 + 14, y + h / 2 - 2);
+
+      // Note name small
+      ctx.fillStyle = isActive ? '#ffffffaa' : '#ffffff44';
+      ctx.font = `11px system-ui`;
+      ctx.fillText(note.noteName + note.noteOctave, x + w / 2 + 14, y + h / 2 + 14);
+    }
+  }
+
+  // Strikebar
+  const sbGlow = '#1d4ed8';
+  ctx.shadowColor = sbGlow;
+  ctx.shadowBlur  = 12;
+  ctx.strokeStyle = '#60a5fa';
+  ctx.lineWidth   = 3;
+  ctx.beginPath();
+  ctx.moveTo(LANE_X, STRIKE_Y);
+  ctx.lineTo(LANE_X + LANE_W, STRIKE_Y);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Countdown overlay
+  if (state === 'COUNTDOWN') {
+    ctx.fillStyle = '#0f0f1acc';
+    ctx.fillRect(0, 0, CW, CH);
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 80px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(countdownVal > 0 ? countdownVal : 'GO!', CW / 2, CH / 2);
+  }
+}
+
+// ── Hit detection ──
+function checkHits(now) {
+  if (state !== 'PLAYING') return;
+  const elapsed = now - gameStart;
+
+  for (const note of songNotes) {
+    if (note.state !== 'pending') continue;
+
+    const diff = elapsed - note.hitTime;
+
+    // Miss: note has passed the hit window
+    if (diff > HIT_WINDOW_MS) {
+      note.state = 'miss';
+      combo = 0;
+      updateUI();
+      continue;
+    }
+
+    // In hit window: check if player is playing the right note
+    if (Math.abs(diff) <= HIT_WINDOW_MS && currentNote) {
+      if (currentNote.name === note.noteName && currentNote.octave === note.noteOctave) {
+        note.state = 'hit';
+        const pts = Math.abs(diff) < 100 ? 100 : 50;
+        combo++;
+        score += pts * comboMultiplier();
+        hitNotes++;
+        flashEffects.push({ y: STRIKE_Y, color: '#4ade80', alpha: 0.7, t: now });
+        updateUI();
+      }
+    }
+  }
+
+  // Song over
+  if (songNotes.every(n => n.state !== 'pending')) {
+    endGame();
+  }
+}
+
+function comboMultiplier() {
+  if (combo >= 30) return 4;
+  if (combo >= 20) return 3;
+  if (combo >= 10) return 2;
+  return 1;
+}
+
+function updateUI() {
+  document.getElementById('scoreVal').textContent = score.toLocaleString();
+  document.getElementById('comboVal').textContent = `×${comboMultiplier()}`;
+  const judged = songNotes.filter(n => n.state !== 'pending').length;
+  const acc = judged ? Math.round((hitNotes / judged) * 100) : 0;
+  document.getElementById('accVal').textContent = judged ? acc + '%' : '--%';
+}
+
+// ── Main loop ──
+let lastBuf = null;
+function loop(now) {
+  // Audio
+  if (analyser) {
+    const buf = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(buf);
+    const freq = autoCorrelate(buf, audioCtx.sampleRate);
+    if (freq > 0) {
+      currentNote = freqToNoteInfo(freq);
+      document.getElementById('detNote').textContent = currentNote.name;
+      document.getElementById('detNote').classList.add('active');
+      document.getElementById('detOct').textContent  = currentNote.octave;
+    } else {
+      currentNote = null;
+      document.getElementById('detNote').textContent = '--';
+      document.getElementById('detNote').classList.remove('active');
+      document.getElementById('detOct').textContent  = '';
+    }
+  }
+
+  checkHits(now);
+  drawHighway(now);
+  animId = requestAnimationFrame(loop);
+}
+
+// ── Countdown then start ──
+async function startCountdown() {
+  state = 'COUNTDOWN';
+
+  for (let i = 3; i >= 1; i--) {
+    countdownVal = i;
+    await delay(900);
+  }
+  countdownVal = 0; // "GO!"
+  await delay(600);
+
+  gameStart = performance.now();
+  state = 'PLAYING';
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── End game & results ──
+function endGame() {
+  state = 'RESULTS';
+  const acc = totalNotes ? Math.round((hitNotes / totalNotes) * 100) : 0;
+  const grade = acc >= 95 ? 'S' : acc >= 80 ? 'A' : acc >= 65 ? 'B' : acc >= 50 ? 'C' : 'F';
+  const labels = { S: 'Perfect!', A: 'Great!', B: 'Good!', C: 'Keep Practicing', F: 'Try Again' };
+
+  const resGrade = document.getElementById('resGrade');
+  resGrade.textContent = grade;
+  resGrade.className   = `grade ${grade}`;
+  document.getElementById('resTitle').textContent = labels[grade];
+  document.getElementById('resStats').textContent =
+    `Score: ${score.toLocaleString()} · ${hitNotes}/${totalNotes} notes · ${acc}% accuracy`;
+  document.getElementById('results').classList.add('show');
+
+  document.getElementById('startBtn').textContent = 'START';
+  document.getElementById('startBtn').classList.remove('stop');
+}
+
+// ── Start / Stop ──
+async function startGame() {
+  const songKey = document.getElementById('songSelect').value;
+  const bpm     = parseInt(document.getElementById('bpmRange').value, 10);
+  const song    = SONGS[songKey];
+
+  score = 0; combo = 0; hitNotes = 0;
+  songNotes  = buildNotes(song, bpm);
+  totalNotes = songNotes.length;
+  flashEffects = [];
+  updateUI();
+
+  // Start mic if not running
+  if (!audioCtx) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      });
+      audioCtx  = new AudioContext();
+      analyser  = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      micSource = audioCtx.createMediaStreamSource(stream);
+      micSource.connect(analyser);
+    } catch {
+      alert('Microphone access required.');
+      return;
+    }
+  }
+
+  if (animId) cancelAnimationFrame(animId);
+  animId = requestAnimationFrame(loop);
+
+  await startCountdown();
+}
+
+function stopGame() {
+  state = 'IDLE';
+  if (animId) { cancelAnimationFrame(animId); animId = null; }
+  songNotes = [];
+  drawHighway(-1e9);
+  document.getElementById('startBtn').textContent = 'START';
+  document.getElementById('startBtn').classList.remove('stop');
+}
+
+// ── Controls ──
+document.getElementById('startBtn').addEventListener('click', async () => {
+  if (state === 'IDLE' || state === 'RESULTS') {
+    document.getElementById('results').classList.remove('show');
+    document.getElementById('startBtn').textContent = 'STOP';
+    document.getElementById('startBtn').classList.add('stop');
+    await startGame();
+  } else {
+    stopGame();
+  }
+});
+
+document.getElementById('retryBtn').addEventListener('click', () => {
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('startBtn').textContent = 'STOP';
+  document.getElementById('startBtn').classList.add('stop');
+  state = 'IDLE';
+  startGame();
+});
+
+document.getElementById('bpmRange').addEventListener('input', e => {
+  document.getElementById('bpmLabel').textContent = e.target.value;
+});
+
+// Initial draw
+drawHighway(-1e9);
+</script>
+</body>
+</html>

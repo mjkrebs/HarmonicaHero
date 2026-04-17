@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harmonica Trainer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f1a;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 16px 40px;
+      gap: 0;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #7dd3fc;
+      margin-bottom: 28px;
+    }
+
+    /* ── Note display ── */
+    .note-display {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 4px;
+      min-height: 96px;
+      margin-bottom: 4px;
+    }
+
+    #noteName {
+      font-size: 7rem;
+      font-weight: 800;
+      line-height: 1;
+      color: #475569;
+      transition: color 0.1s;
+      min-width: 80px;
+      text-align: center;
+    }
+
+    #noteName.active { color: #f8fafc; }
+
+    #noteOctave {
+      font-size: 2rem;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-top: 12px;
+      min-width: 20px;
+    }
+
+    /* ── Cents label ── */
+    #centsDisplay {
+      font-size: 1rem;
+      color: #64748b;
+      text-align: center;
+      height: 22px;
+      margin-bottom: 12px;
+      transition: color 0.15s;
+    }
+
+    /* ── Tuner canvas ── */
+    #tuner {
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* ── Action label ── */
+    #actionLabel {
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      height: 30px;
+      margin: 10px 0 20px;
+    }
+
+    #actionLabel.blow      { color: #60a5fa; }
+    #actionLabel.draw      { color: #fb923c; }
+    #actionLabel.ambiguous { color: #a78bfa; }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 14px;
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    .legend-item { display: flex; align-items: center; gap: 7px; }
+
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+    }
+
+    /* ── Harmonica diagram ── */
+    .harmonica-wrap {
+      overflow-x: auto;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 28px;
+      padding-bottom: 4px;
+    }
+
+    .harmonica {
+      display: flex;
+      gap: 5px;
+      background: #1e2030;
+      border: 1px solid #2d3148;
+      border-radius: 14px;
+      padding: 14px 16px;
+      flex-shrink: 0;
+    }
+
+    .hole {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      width: 50px;
+    }
+
+    .hole-cell {
+      width: 48px;
+      height: 52px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      transition: all 0.12s;
+      cursor: default;
+    }
+
+    .blow-cell {
+      background: #0f2a4a;
+      border: 2px solid #1e4b82;
+    }
+
+    .draw-cell {
+      background: #2d1203;
+      border: 2px solid #7c2d12;
+    }
+
+    .hole-cell.lit.blow-cell {
+      background: #1d4ed8;
+      border-color: #93c5fd;
+      box-shadow: 0 0 16px #3b82f680;
+    }
+
+    .hole-cell.lit.draw-cell {
+      background: #c2410c;
+      border-color: #fdba74;
+      box-shadow: 0 0 16px #f9731680;
+    }
+
+    .cell-arrow {
+      font-size: 0.65rem;
+      opacity: 0.6;
+    }
+
+    .cell-note {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .cell-octave {
+      font-size: 0.55rem;
+      color: #94a3b8;
+    }
+
+    .hole-num {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    /* ── Start button ── */
+    #startBtn {
+      background: #1d4ed8;
+      color: #fff;
+      border: none;
+      padding: 13px 40px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    #startBtn:hover  { background: #2563eb; }
+    #startBtn:active { transform: scale(0.97); }
+
+    #startBtn.listening {
+      background: #991b1b;
+    }
+    #startBtn.listening:hover { background: #b91c1c; }
+
+    /* ── Signal bar ── */
+    .signal-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+      font-size: 0.75rem;
+      color: #475569;
+      height: 20px;
+    }
+
+    #signalBar {
+      width: 80px;
+      height: 6px;
+      background: #1e2030;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    #signalFill {
+      height: 100%;
+      width: 0%;
+      background: #4ade80;
+      border-radius: 3px;
+      transition: width 0.08s;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Harmonica Trainer</h1>
+
+<div class="note-display">
+  <span id="noteName">--</span><span id="noteOctave"></span>
+</div>
+
+<div id="centsDisplay">Press Start to begin</div>
+
+<canvas id="tuner" width="340" height="190"></canvas>
+
+<div id="actionLabel"></div>
+
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:#1d4ed8;border:2px solid #93c5fd;"></div>
+    Blow ↑
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:#c2410c;border:2px solid #fdba74;"></div>
+    Draw ↓
+  </div>
+</div>
+
+<div class="harmonica-wrap">
+  <div class="harmonica" id="harmonica"></div>
+</div>
+
+<button id="startBtn">START LISTENING</button>
+
+<div class="signal-wrap">
+  <span>Signal</span>
+  <div id="signalBar"><div id="signalFill"></div></div>
+</div>
+
+<script>
+// ── Harmonica layout: C diatonic (Richter tuning) ──
+const HARMONICA = [
+  { hole: 1,  blow: ['C',4], draw: ['D',4] },
+  { hole: 2,  blow: ['E',4], draw: ['G',4] },
+  { hole: 3,  blow: ['G',4], draw: ['B',4] },
+  { hole: 4,  blow: ['C',5], draw: ['D',5] },
+  { hole: 5,  blow: ['E',5], draw: ['F',5] },
+  { hole: 6,  blow: ['G',5], draw: ['A',5] },
+  { hole: 7,  blow: ['C',6], draw: ['B',5] },
+  { hole: 8,  blow: ['E',6], draw: ['D',6] },
+  { hole: 9,  blow: ['G',6], draw: ['F',6] },
+  { hole: 10, blow: ['C',7], draw: ['A',6] },
+];
+
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function freqToNoteInfo(freq) {
+  const noteNum = 12 * Math.log2(freq / 440) + 69;
+  const rounded = Math.round(noteNum);
+  const cents   = Math.round((noteNum - rounded) * 100);
+  const name    = NOTE_NAMES[((rounded % 12) + 12) % 12];
+  const octave  = Math.floor(rounded / 12) - 1;
+  return { name, octave, cents };
+}
+
+// ── Build harmonica DOM ──
+const harmonicaEl = document.getElementById('harmonica');
+HARMONICA.forEach(({ hole, blow, draw }) => {
+  const holeEl = document.createElement('div');
+  holeEl.className = 'hole';
+  holeEl.innerHTML = `
+    <div class="hole-cell blow-cell" id="blow-${hole}">
+      <span class="cell-arrow">↑</span>
+      <span class="cell-note">${blow[0]}</span>
+      <span class="cell-octave">${blow[1]}</span>
+    </div>
+    <div class="hole-num">${hole}</div>
+    <div class="hole-cell draw-cell" id="draw-${hole}">
+      <span class="cell-arrow">↓</span>
+      <span class="cell-note">${draw[0]}</span>
+      <span class="cell-octave">${draw[1]}</span>
+    </div>
+  `;
+  harmonicaEl.appendChild(holeEl);
+});
+
+// ── Tuner canvas ──
+const canvas = document.getElementById('tuner');
+const ctx2d  = canvas.getContext('2d');
+
+function drawTuner(cents, active) {
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H - 10;
+  const R  = 148;
+
+  ctx2d.clearRect(0, 0, W, H);
+
+  // Background arc
+  ctx2d.beginPath();
+  ctx2d.arc(cx, cy, R, Math.PI, 2 * Math.PI);
+  ctx2d.strokeStyle = '#1e2030';
+  ctx2d.lineWidth = 12;
+  ctx2d.stroke();
+
+  // Tick marks
+  const ticks = [
+    { v: -50, major: true },
+    { v: -25, major: false },
+    { v:   0, major: true },
+    { v:  25, major: false },
+    { v:  50, major: true },
+  ];
+
+  ticks.forEach(({ v, major }) => {
+    const angle  = Math.PI + ((v + 50) / 100) * Math.PI;
+    const inner  = R - (major ? 18 : 10);
+    const outer  = R + 2;
+    ctx2d.beginPath();
+    ctx2d.moveTo(cx + inner * Math.cos(angle), cy + inner * Math.sin(angle));
+    ctx2d.lineTo(cx + outer * Math.cos(angle), cy + outer * Math.sin(angle));
+    ctx2d.strokeStyle = v === 0 ? '#4ade80' : '#374151';
+    ctx2d.lineWidth   = major ? 2.5 : 1.5;
+    ctx2d.stroke();
+
+    if (major) {
+      const lr = R - 30;
+      ctx2d.fillStyle    = v === 0 ? '#4ade80' : '#4b5563';
+      ctx2d.font         = '11px system-ui';
+      ctx2d.textAlign    = 'center';
+      ctx2d.textBaseline = 'middle';
+      ctx2d.fillText(
+        v === 0 ? '●' : (v > 0 ? '+' + v : String(v)),
+        cx + lr * Math.cos(angle),
+        cy + lr * Math.sin(angle)
+      );
+    }
+  });
+
+  if (!active) return;
+
+  const clamped = Math.max(-50, Math.min(50, cents));
+  const absC    = Math.abs(clamped);
+  const color   = absC < 5 ? '#4ade80' : absC < 20 ? '#facc15' : '#f87171';
+
+  // Filled arc from center to needle
+  const centerAngle = Math.PI + (50 / 100) * Math.PI;
+  const needleAngle = Math.PI + ((clamped + 50) / 100) * Math.PI;
+
+  ctx2d.beginPath();
+  ctx2d.arc(cx, cy, R, Math.min(centerAngle, needleAngle), Math.max(centerAngle, needleAngle));
+  ctx2d.strokeStyle = color + '55';
+  ctx2d.lineWidth   = 12;
+  ctx2d.stroke();
+
+  // Needle line
+  ctx2d.beginPath();
+  ctx2d.moveTo(cx, cy);
+  ctx2d.lineTo(
+    cx + (R - 6) * Math.cos(needleAngle),
+    cy + (R - 6) * Math.sin(needleAngle)
+  );
+  ctx2d.strokeStyle = color;
+  ctx2d.lineWidth   = 3;
+  ctx2d.lineCap     = 'round';
+  ctx2d.stroke();
+
+  // Hub dot
+  ctx2d.beginPath();
+  ctx2d.arc(cx, cy, 7, 0, 2 * Math.PI);
+  ctx2d.fillStyle = color;
+  ctx2d.fill();
+}
+
+drawTuner(0, false);
+
+// ── Pitch detection ──
+function autoCorrelate(buf, sampleRate) {
+  const SIZE = buf.length;
+
+  // RMS — silence check
+  let rms = 0;
+  for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+  rms = Math.sqrt(rms / SIZE);
+  if (rms < 0.01) return { freq: -1, rms };
+
+  // Search range covers C4 (261 Hz) down to ~190 Hz, up to ~2300 Hz
+  const minLag = Math.floor(sampleRate / 2300);  // ~19
+  const maxLag = Math.ceil(sampleRate / 190);     // ~232
+
+  const c = new Float32Array(maxLag + 1);
+  for (let lag = minLag; lag <= maxLag; lag++) {
+    let sum = 0;
+    const n = SIZE - lag;
+    for (let i = 0; i < n; i++) sum += buf[i] * buf[i + lag];
+    c[lag] = sum / n;
+  }
+
+  // Reference energy
+  let c0 = 0;
+  for (let i = 0; i < SIZE; i++) c0 += buf[i] * buf[i];
+  c0 /= SIZE;
+
+  // Find global max for threshold
+  let globalMax = 0;
+  for (let i = minLag; i <= maxLag; i++) {
+    if (c[i] > globalMax) globalMax = c[i];
+  }
+  if (globalMax / c0 < 0.15) return { freq: -1, rms };
+
+  // Pick the FIRST local peak above 80% of the global max.
+  // This avoids the classic octave error where autocorrelation peaks at
+  // 2×/3×/4× the fundamental period (lower octaves) have similar heights
+  // to the true fundamental peak but appear at larger lags.
+  const threshold = 0.80 * globalMax;
+  const WIN = 2;
+
+  let bestPos = -1;
+  for (let i = minLag + WIN; i <= maxLag - WIN; i++) {
+    if (c[i] < threshold) continue;
+    let isPeak = true;
+    for (let j = 1; j <= WIN; j++) {
+      if (c[i - j] > c[i] || c[i + j] > c[i]) { isPeak = false; break; }
+    }
+    if (isPeak) { bestPos = i; break; }
+  }
+
+  if (bestPos < 0) return { freq: -1, rms };
+
+  // Parabolic interpolation for sub-sample precision
+  let T = bestPos;
+  if (bestPos > minLag && bestPos < maxLag) {
+    const x1 = c[bestPos - 1], x2 = c[bestPos], x3 = c[bestPos + 1];
+    const a = (x1 + x3 - 2 * x2) / 2;
+    const b = (x3 - x1) / 2;
+    if (a < 0) T = bestPos - b / (2 * a);
+  }
+
+  return { freq: sampleRate / T, rms };
+}
+
+// ── App state ──
+let audioCtx, analyser, micSource, animId;
+let listening  = false;
+let smoothCents = 0;
+let stableNote  = null;
+let stableStart = 0;
+const STABLE_MS = 180;
+
+const noteNameEl    = document.getElementById('noteName');
+const noteOctaveEl  = document.getElementById('noteOctave');
+const centsDisplayEl = document.getElementById('centsDisplay');
+const actionLabelEl = document.getElementById('actionLabel');
+const signalFill    = document.getElementById('signalFill');
+const startBtn      = document.getElementById('startBtn');
+
+function clearHighlights() {
+  document.querySelectorAll('.hole-cell').forEach(el => el.classList.remove('lit'));
+}
+
+function highlightHole(name, octave) {
+  clearHighlights();
+  const matches = [];
+  for (const h of HARMONICA) {
+    if (h.blow[0] === name && h.blow[1] === octave) {
+      document.getElementById(`blow-${h.hole}`).classList.add('lit');
+      matches.push({ hole: h.hole, action: 'BLOW', dir: '↑', type: 'blow' });
+    }
+    if (h.draw[0] === name && h.draw[1] === octave) {
+      document.getElementById(`draw-${h.hole}`).classList.add('lit');
+      matches.push({ hole: h.hole, action: 'DRAW', dir: '↓', type: 'draw' });
+    }
+  }
+  return matches.length ? matches : null;
+}
+
+function processAudio() {
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+
+  const { freq, rms } = autoCorrelate(buf, audioCtx.sampleRate);
+
+  // Signal bar
+  const signalPct = Math.min(100, rms * 600);
+  signalFill.style.width = signalPct + '%';
+  signalFill.style.background = signalPct > 30 ? '#4ade80' : '#facc15';
+
+  if (freq > 0) {
+    const info = freqToNoteInfo(freq);
+
+    // Smooth cents to reduce jitter
+    smoothCents = smoothCents * 0.72 + info.cents * 0.28;
+    const roundedCents = Math.round(smoothCents);
+
+    // Note display
+    noteNameEl.textContent = info.name;
+    noteNameEl.classList.add('active');
+    noteOctaveEl.textContent = info.octave;
+
+    // Cents label
+    const absC = Math.abs(roundedCents);
+    if (absC < 5) {
+      centsDisplayEl.textContent = 'In tune ✓';
+      centsDisplayEl.style.color = '#4ade80';
+    } else {
+      centsDisplayEl.textContent = (roundedCents > 0 ? '+' : '') + roundedCents + ' cents';
+      centsDisplayEl.style.color = absC < 20 ? '#facc15' : '#f87171';
+    }
+
+    drawTuner(smoothCents, true);
+
+    // Stability: hold the same note for STABLE_MS before highlighting
+    const key = `${info.name}${info.octave}`;
+    if (key !== stableNote) {
+      stableNote  = key;
+      stableStart = performance.now();
+    } else if (performance.now() - stableStart >= STABLE_MS) {
+      const found = highlightHole(info.name, info.octave);
+      if (found) {
+        if (found.length === 1) {
+          actionLabelEl.textContent = `Hole ${found[0].hole} — ${found[0].action} ${found[0].dir}`;
+          actionLabelEl.className   = `action-label ${found[0].type}`;
+        } else {
+          actionLabelEl.textContent = found.map(f => `${f.hole}${f.dir}`).join('  or  ');
+          actionLabelEl.className   = 'action-label ambiguous';
+        }
+      } else {
+        actionLabelEl.textContent = '';
+        actionLabelEl.className   = 'action-label';
+      }
+    }
+
+  } else {
+    // Silence
+    noteNameEl.textContent = '--';
+    noteNameEl.classList.remove('active');
+    noteOctaveEl.textContent  = '';
+    centsDisplayEl.textContent = 'Listening...';
+    centsDisplayEl.style.color = '#64748b';
+    drawTuner(0, false);
+    clearHighlights();
+    actionLabelEl.textContent = '';
+    actionLabelEl.className   = 'action-label';
+    stableNote  = null;
+    smoothCents = 0;
+  }
+
+  animId = requestAnimationFrame(processAudio);
+}
+
+// ── Start / Stop ──
+startBtn.addEventListener('click', async () => {
+  if (listening) {
+    cancelAnimationFrame(animId);
+    micSource.disconnect();
+    audioCtx.close();
+    listening = false;
+    startBtn.textContent = 'START LISTENING';
+    startBtn.classList.remove('listening');
+    noteNameEl.textContent    = '--';
+    noteNameEl.classList.remove('active');
+    noteOctaveEl.textContent  = '';
+    centsDisplayEl.textContent = 'Press Start to begin';
+    centsDisplayEl.style.color = '#64748b';
+    signalFill.style.width    = '0%';
+    drawTuner(0, false);
+    clearHighlights();
+    actionLabelEl.textContent = '';
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false });
+    audioCtx  = new AudioContext();
+    analyser  = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    micSource = audioCtx.createMediaStreamSource(stream);
+    micSource.connect(analyser);
+    listening = true;
+    startBtn.textContent = 'STOP LISTENING';
+    startBtn.classList.add('listening');
+    centsDisplayEl.textContent = 'Listening...';
+    processAudio();
+  } catch (err) {
+    alert('Microphone access is required. Please allow it in your browser and try again.');
+  }
+});
+</script>
+</body>
+</html>

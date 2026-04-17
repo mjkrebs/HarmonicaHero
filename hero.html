@@ -492,15 +492,16 @@ let songNotes    = [];
 let gameStart    = 0;
 let beatMs       = 0;
 let score = 0, combo = 0, totalNotes = 0, hitNotes = 0;
-let currentNote  = null;
-let flashHoles   = new Map(); // hole → { alpha, color }
-let countdownVal = 0;
+let currentNote      = null;
+let lastDetectedKey  = '';
+let flashHoles       = new Map(); // hole → { alpha, color }
+let countdownVal     = 0;
 
 function buildNotes(song, bpm) {
   beatMs = 60000 / bpm;
   return song.notes.map(n => {
     const [noteName, noteOctave] = holeNote(n.hole, n.action);
-    return { ...n, noteName, noteOctave, hitTime: (n.beat + INTRO_BEATS) * beatMs, state: 'pending' };
+    return { ...n, noteName, noteOctave, hitTime: (n.beat + INTRO_BEATS) * beatMs, state: 'pending', wrongFlash: 0 };
   });
 }
 
@@ -665,6 +666,22 @@ function drawHighway(now) {
       ctx.textBaseline = 'middle';
       ctx.fillText(isBlow ? '↑' : '↓', cx, cy);
     }
+
+    // Wrong-note flash: grey overlay + red strikethrough
+    if (note.wrongFlash > 0) {
+      ctx.globalAlpha = note.wrongFlash * 0.65;
+      ctx.fillStyle   = '#555566';
+      ctx.beginPath(); ctx.roundRect(nx, ny, nw, nh, 7); ctx.fill();
+      ctx.globalAlpha = note.wrongFlash;
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth   = 3;
+      ctx.beginPath();
+      ctx.moveTo(nx + 4, ny + nh / 2);
+      ctx.lineTo(nx + nw - 4, ny + nh / 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      note.wrongFlash = Math.max(0, note.wrongFlash - 0.025);
+    }
   }
 
   // Draw harmonica at bottom
@@ -693,6 +710,20 @@ function drawHighway(now) {
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(countdownVal > 0 ? countdownVal : 'GO!', CW / 2, CH / 2);
+  }
+}
+
+// ── Wrong-note detection (fires once per new pitch event) ──
+function onNewNoteDetected(note) {
+  if (state !== 'PLAYING') return;
+  const elapsed = performance.now() - gameStart;
+  for (const sn of songNotes) {
+    if (sn.state !== 'pending') continue;
+    if (Math.abs(elapsed - sn.hitTime) <= HIT_WINDOW_MS) {
+      if (note.name !== sn.noteName || note.octave !== sn.noteOctave) {
+        sn.wrongFlash = 1.0;
+      }
+    }
   }
 }
 
@@ -755,8 +786,11 @@ function loop(now) {
       document.getElementById('detNote').textContent = currentNote.name;
       document.getElementById('detNote').classList.add('active');
       document.getElementById('detOct').textContent  = currentNote.octave;
+      const key = currentNote.name + currentNote.octave;
+      if (key !== lastDetectedKey) { lastDetectedKey = key; onNewNoteDetected(currentNote); }
     } else {
       currentNote = null;
+      lastDetectedKey = '';
       document.getElementById('detNote').textContent = '--';
       document.getElementById('detNote').classList.remove('active');
       document.getElementById('detOct').textContent  = '';
